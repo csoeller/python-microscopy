@@ -677,12 +677,12 @@ class Pipeline:
             self.filesToClose.append(h5f)
             
             #defer our IO to the recipe IO method - TODO - do this for other file types as well
-            self.recipe._inject_tables_from_h5('', h5f, filename, '.hdf')
+            self.recipe._inject_tables_from_hdf5('', h5f, filename, '.hdf')
 
             for dsname, ds_ in self.dataSources.items():
                 #loop through tables until we get one which defines x. If no table defines x, take the last table to be added
                 #TODO make this logic better.
-                ds = ds_.resultsSource
+                ds = ds_
                 if 'x' in ds.keys():
                     # TODO - get rid of some of the grossness here
                     mdh = getattr(ds, 'mdh', mdh)
