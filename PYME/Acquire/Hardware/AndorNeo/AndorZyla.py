@@ -768,9 +768,11 @@ class AndorBase(SDK3Camera, CameraMapMixin):
         return self._frameRate
 
     def TemperatureStatusText(self):
-        return "Zyla target T %s - %s" % (self.TemperatureControl.getString(),
-                                          self.TemperatureStatus.getString())
-
+        if self.active:
+            return "Zyla target T %s - %s" % (self.TemperatureControl.getString(),
+                                              self.TemperatureStatus.getString())
+        else:
+            return ''
 
     def __del__(self):
         self.Shutdown()
