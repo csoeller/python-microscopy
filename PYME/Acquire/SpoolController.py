@@ -293,6 +293,8 @@ class SpoolController(object):
         
     def _update_series_counter(self):
         logger.debug('Updating series counter')
+        self.seriesCounter = 0
+        self.seriesName = self._GenSeriesName()
         while self._checkOutputExists(self.seriesName):
             self.seriesCounter +=1
             self.seriesName = self._GenSeriesName()
@@ -532,11 +534,12 @@ class SpoolController(object):
                 subprocess.Popen('%s %s' % (dh5view_cmd, self.spooler.getURL()), shell=True)
      
     def launch_cluster_analysis(self):
-        from PYME.cluster import HTTPRulePusher
+        from PYME.cluster import rules
         
         seriesName = self.spooler.getURL()
         try:
-            HTTPRulePusher.launch_localize(self.scope.analysisSettings.analysisMDH, seriesName)
+            #HTTPRulePusher.launch_localize(self.scope.analysisSettings.analysisMDH, seriesName)
+            rules.LocalisationRule(seriesName=seriesName, analysisMetadata=self.scope.analysisSettings.analysisMDH).push()
         except:
             logger.exception('Error launching analysis for %s' % seriesName)
 
