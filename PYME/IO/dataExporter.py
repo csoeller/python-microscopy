@@ -86,6 +86,7 @@ class H5Exporter(Exporter):
         filters=tables.Filters(self.complevel,self.complib,shuffle=True)
 
         nframes = (zslice.stop - zslice.start)/zslice.step
+        nChans = data.shape[3]
 
         xSize, ySize = data[xslice, yslice, 0].shape[:2]
         
@@ -101,26 +102,32 @@ class H5Exporter(Exporter):
         ims = h5out.create_earray(h5out.root,'ImageData',atm,(0,xSize,ySize), filters=filters, expectedrows=nframes, chunkshape=(1,xSize,ySize))
 
         curFrame = 0
-        for frameN in range(zslice.start,zslice.stop, zslice.step):
-            curFrame += 1
-            im = data[xslice, yslice, frameN].squeeze()
-            
-            for fN in range(frameN+1, frameN+zslice.step):
-                im += data[xslice, yslice, fN].squeeze()
+        for ch_num in range(nChans):
+            for frameN in range(zslice.start,zslice.stop, zslice.step):
+                curFrame += 1
+                im = data[xslice, yslice, frameN, ch_num].squeeze()
                 
-            if im.ndim == 1:
-                im = im.reshape((-1, 1))[None, :,:]
-            else:
-                im = im[None, :,:]
-            
-            #print im.shape    
-            ims.append(im)
-            if ((curFrame % 10) == 0)  and progressCallback:
-                try:
-                    progressCallback(curFrame, nframes)
-                except:
-                    pass
+                for fN in range(frameN+1, frameN+zslice.step):
+                    im += data[xslice, yslice, fN, ch_num].squeeze()
+                    
+                if im.ndim == 1:
+                    im = im.reshape((-1, 1))[None, :,:]
+                else:
+                    im = im[None, :,:]
+                
+                #print im.shape
+                ims.append(im)
+                if ((curFrame % 10) == 0)  and progressCallback:
+                    try:
+                        progressCallback(curFrame, nframes)
+                    except:
+                        pass
             #ims.flush()
+        
+        ims.attrs.DimOrder = 'XYZTC'
+        ims.attrs.SizeC = nChans
+        ims.attrs.SizeZ = nframes  #FIXME for proper XYZTC data model
+        ims.attrs.SizeT = 1        #FIXME for proper XYZTC data model
             
         ims.flush()
 
@@ -230,6 +237,12 @@ class OMETiffExporter(Exporter):
                 return data.astype('uint8')
             else:
                 return data
+            
+        if data.nbytes > 2e9:
+            warnings.warn('Data is larger than 2GB, generated TIFF may not read in all software')
+            
+        if data.nbytes > 4e9:
+            raise RuntimeError('TIFF has a maximum file size of 4GB, crop data or save as HDF')
         
         dw = dataWrap.ListWrap([numpy.atleast_3d(_bool_to_uint8(data[xslice, yslice, zslice, i].squeeze())) for i in range(data.shape[3])])
         #xmd = None

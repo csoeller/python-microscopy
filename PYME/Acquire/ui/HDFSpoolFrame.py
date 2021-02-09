@@ -36,6 +36,7 @@ import glob
 from PYME.IO import PZFFormat
 import sys
 
+from PYME import config
 
 [wxID_FRSPOOL, wxID_FRSPOOLBSETSPOOLDIR, wxID_FRSPOOLBSTARTSPOOL, 
  wxID_FRSPOOLBSTOPSPOOLING, wxID_FRSPOOLCBCOMPRESS, wxID_FRSPOOLCBQUEUE, 
@@ -83,6 +84,9 @@ class PanSpool(afp.foldingPane):
         self.rbZStepped = wx.RadioButton(pan, -1, 'Z stepped')
         self.rbZStepped.Bind(wx.EVT_RADIOBUTTON, self.OnToggleZStepping)
         hsizer.Add(self.rbZStepped, 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 2)
+        
+        if not hasattr(self.scope, 'stackSettings'):
+            self.rbZStepped.Disable()
     
         if self.spoolController.z_stepped:
             self.rbZStepped.SetValue(True)
@@ -161,7 +165,7 @@ class PanSpool(afp.foldingPane):
         hsizer.Add(self.cbCompress, 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
     
         self.cbQuantize = wx.CheckBox(pan, -1, 'Quantization')
-        self.cbQuantize.SetValue(True)
+        self.cbQuantize.SetValue(config.get('spooler-quantize_by_default', False))
     
         hsizer.Add(self.cbQuantize, 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
     
@@ -279,11 +283,12 @@ class PanSpool(afp.foldingPane):
     def _init_ctrls(self):
         self.AddNewElement(self._protocol_pan())
 
-        clp = afp.collapsingPane(self, caption='Z stepping ...')
-        self._seq_panel = seqdialog.seqPanel(clp, self.scope, mode='sequence')
-        clp.AddNewElement(self._seq_panel)
-        self.AddNewElement(clp)
-        self.seq_pan = clp
+        if hasattr(self.scope, 'stackSettings'):
+            clp = afp.collapsingPane(self, caption='Z stepping ...')
+            self._seq_panel = seqdialog.seqPanel(clp, self.scope, mode='sequence')
+            clp.AddNewElement(self._seq_panel)
+            self.AddNewElement(clp)
+            self.seq_pan = clp
 
         self.AddNewElement(self._spool_to_pan())
 

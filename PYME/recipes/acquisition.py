@@ -89,13 +89,13 @@ class QueueAcquisitions(OutputModule):
             Information about the source file to allow pattern substitution to 
             generate the output name. At least 'basedir' (which is the fully 
             resolved directory name in which the input file resides) and 
-            'filestub' (which is the filename without any extension) should be 
+            'file_stub' (which is the filename without any extension) should be 
             resolved.
         
         Notes
         -----
         str spool_settings values can context-substitute templated parameters,
-        e.g. spool_settings = {'subdirectory': '{filestub}'}
+        e.g. spool_settings = {'subdirectory': '{file_stub}'}
         """
         # substitute spool settings
         spool_settings = self.spool_settings.copy()
@@ -119,29 +119,31 @@ class QueueAcquisitions(OutputModule):
         else:
             positions = positions[::-1, :] if self.lifo else positions
         
-        dest = self.action_server_url + '/queue_action'
+        dest = self.action_server_url + '/queue_actions'
         session = requests.Session()
+        actions = list()
         for ri in range(positions.shape[0]):
-            args = {'function_name': 'centre_roi_on', 
-            'args': {'x': positions[ri, 0], 'y': positions[ri, 1]}, 
-                    'timeout': self.timeout, 'nice': self.nice,
-                    'max_duration': self.max_duration}
-            session.post(dest, data=json.dumps(args), 
-                          headers={'Content-Type': 'application/json'})
-            
-            time.sleep(self.between_post_throttle)
-
-            args = {'function_name': 'spoolController.StartSpooling',
-                    'args': spool_settings,
-                    'timeout': self.timeout, 'nice': self.nice,
-                    'max_duration': self.max_duration}
-            session.post(dest, data=json.dumps(args), 
-                          headers={'Content-Type': 'application/json'})
-            
-            time.sleep(self.between_post_throttle)
+            actions.append({
+                'CentreROIOn':{
+                    'x': positions[ri, 0], 'y': positions[ri, 1],
+                    'then': {
+                        'SpoolSeries' : spool_settings
+                    }
+                }
+            })
+        session.post(dest + '?timeout=%f&nice=%d&max_duration=%f' % (self.timeout,
+                                                                        self.nice,
+                                                                        self.max_duration),
+                        data=json.dumps(actions),
+                        headers={'Content-Type': 'application/json'})
         
         # queue a high-nice call to shut off all lasers when we're done
-        args = {'function_name': 'turnAllLasersOff',
-                    'timeout': self.timeout, 'nice': np.iinfo(int).max}
-        session.post(dest, data=json.dumps(args), 
-                          headers={'Content-Type': 'application/json'})
+        session.post(dest + '?timeout=%f&nice=%d&max_duration=%f' % (self.timeout,
+                                                                        np.iinfo(int).max,
+                                                                        self.max_duration),
+                        data=json.dumps([{
+                            'FunctionAction': {
+                                'functionName': 'turnAllLasersOff', 'args': {}
+                                }
+                            }]),
+                        headers={'Content-Type': 'application/json'})
