@@ -276,13 +276,14 @@ class ModuleBase(HasTraits):
         inv_mode = self._invalidate_parent
         
         try:
+            old_traits = self.trait_get()
             #print('turning off invalidation')
             self._invalidate_parent = False
-            old_traits = self.trait_get()
             #print('edit_traits')
             self.edit_traits(*args, kind='modal', **kwargs)
             self._invalidate_parent = inv_mode
             if not self.trait_get() == old_traits:
+                #print(self.trait_get(), old_traits)
                 #print('invalidating ...')
                 self.invalidate_parent()
         finally:
@@ -423,7 +424,7 @@ class ModuleBase(HasTraits):
                     [Item('_'),] +
                     self._view_items(params) +
                     [Item('_'),] +
-                    [Item(tn) for tn in outputs], buttons=['OK', 'Cancel']) #TODO - should we have cancel? Traits update whilst being edited and cancel doesn't roll back
+                    [Item(tn) for tn in outputs], buttons=['OK']) #TODO - should we have cancel? Traits update whilst being edited and cancel doesn't roll back
 
     def default_traits_view( self ):
         """ This is the traits stock method to specify the default view"""
@@ -685,6 +686,8 @@ class ModuleCollection(HasTraits):
 
         """
         #remove anything which is downstream from changed inputs
+        
+        print('recipe.execute()')
         #print self.namespace.keys()
         for k, v in kwargs.items():
             #print k, v
@@ -710,6 +713,7 @@ class ModuleCollection(HasTraits):
         for m in exec_order:
             if isinstance(m, ModuleBase) and not getattr(m, '_success', False):
                 try:
+                    print('Executing %s' %m)
                     m.check_inputs(self.namespace)
                     m.execute(self.namespace)
                     m._last_error = None
@@ -1196,7 +1200,7 @@ class ModuleCollection(HasTraits):
             return View(Item('modules', editor=ListEditor(style='custom', editor=InstanceEditor(view='pipeline_view'),
                                                           mutable=False),
                              style='custom', show_label=False),
-                        buttons=['OK', 'Cancel'])
+                        buttons=['OK'])
         
     def to_svg(self):
         from . import recipeLayout

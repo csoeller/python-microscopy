@@ -70,6 +70,8 @@ class ActionManager(object):
         self._monitor.daemon = True
         self._monitor.start()
         
+        self._lock = threading.Lock()
+        
     def QueueAction(self, functionName, args, nice=10, timeout=1e6, 
                     max_duration=np.finfo(float).max):
         """Add an action to the queue. Legacy version for string based actions. Most applications should use queue_actions() below instead
@@ -91,7 +93,9 @@ class ActionManager(object):
             a dictionary of arguments to pass the function    
         nice : int (or float)
             The priority with which to execute the function. Functions with a
-            lower nice value execute first.
+            lower nice value execute first. Nice should have a value between 0 and 20. nice=20 is reserved by convention
+            for tidy-up tasks which should run
+            after all other tasks and put the microscope in a 'safe' state.
         timeout : float
             A timeout in seconds from the current time at which the action
             becomes irrelevant and should be ignored.
@@ -104,7 +108,10 @@ class ActionManager(object):
             rather than fine-grained.
             
         """
-        curTime = time.time()    
+        # make sure nice is in supported range.
+        assert ((nice >= 0) and (nice <= 20))
+        
+        curTime = time.time()
         expiry = curTime + timeout
         
         #make sure our timestamps strictly increment
@@ -126,7 +133,7 @@ class ActionManager(object):
             A list of Action instances
         nice : int (or float)
             The priority with which to execute the function. Functions with a
-            lower nice value execute first.
+            lower nice value execute first. Nice should have a value between 0 and 20.
         timeout : float
             A timeout in seconds from the current time at which the action
             becomes irrelevant and should be ignored.
@@ -155,17 +162,23 @@ class ActionManager(object):
         Note that the first two tasks are independant -
 
         '''
-        for action in actions:
-            curTime = time.time()
-            expiry = curTime + timeout
+        # make sure nice is in supported range.
+        assert((nice >= 0) and (nice <= 20))
         
-            #make sure our timestamps strictly increment
-            self._timestamp = max(curTime, self._timestamp + 1e-3)
-        
-            #ensure FIFO behaviour for events with the same priority
-            nice_ = nice + self._timestamp * 1e-10
-        
-            self.actionQueue.put_nowait((nice_, action, expiry, max_duration))
+        with self._lock:
+            # lock to prevent 'nice' collisions when queueing from separate threads.
+            
+            for action in actions:
+                curTime = time.time()
+                expiry = curTime + timeout
+            
+                #make sure our timestamps strictly increment
+                self._timestamp = max(curTime, self._timestamp + 1e-3)
+            
+                #ensure FIFO behaviour for events with the same priority
+                nice_ = nice + self._timestamp * 1e-10
+            
+                self.actionQueue.put_nowait((nice_, action, expiry, max_duration))
             
         self.onQueueChange.send(self)
         
