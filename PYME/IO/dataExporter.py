@@ -82,16 +82,21 @@ class H5Exporter(Exporter):
         self.complevel = complevel
 
     def Export(self, data, outFile, xslice, yslice, zslice, metadata=None, events = None, origName=None, progressCallback=None):
+        from PYME.IO.dataWrap import Wrap
+        
         h5out = tables.open_file(outFile,'w', chunk_cache_size=2**23)
         filters=tables.Filters(self.complevel,self.complib,shuffle=True)
 
         nframes = (zslice.stop - zslice.start)/zslice.step
+        
+        data = Wrap(data) #make sure we can index along a colour dimension
         nChans = data.shape[3]
 
-        xSize, ySize = data[xslice, yslice, 0].shape[:2]
+        slice0 = data[xslice, yslice, 0, 0]
+        xSize, ySize = slice0.shape[:2]
         
         print((xSize, ySize))
-        dtype = data[xslice, yslice, 0].dtype
+        dtype = slice0.dtype
         
         if not dtype in ['uint8', 'uint16', 'float32']:
             warnings.warn('Attempting to save an unsupported data-type (%s) - data should be one of uint8, uint16, or float32' % dtype,
