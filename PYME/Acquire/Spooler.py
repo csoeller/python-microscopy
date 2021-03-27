@@ -104,6 +104,12 @@ class Spooler:
         
         self.maxFrames = maxFrames
         
+        stack_settings = kwargs.get('stack_settings', None)
+        if stack_settings:
+            # only record stack settings if provided (letting protocol fall through to global stack settings,
+            # if not provided / None)
+            self.stack_settings = stack_settings
+        
         self.onSpoolStop = dispatch.Signal()
     
         #if we've got a fake camera - the cycle time will be wrong - fake our time sig to make up for this
@@ -132,15 +138,18 @@ class Spooler:
         eventLog.WantEventNotification.append(self.evtLogger)
 
         self.imNum = 0
-
-        # record start time here in case protocol init tasks generate events (prob only effects simulator).
+        
+        # set tStart here for simulator so that events in init phase get time stamps. Real start time is set below
+        # **after** protocol.Init() call
         self.tStart = time.time()
 
         self.protocol.Init(self)
-
+        
+        # record start time when we start receiving frames.
+        self.tStart = time.time()
         self._collect_start_metadata()
-   
         self.frameSource.connect(self.OnFrame, dispatch_uid=self._spooler_uuid)
+        
         self.spoolOn = True
        
     def StopSpool(self):
