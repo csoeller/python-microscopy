@@ -1160,7 +1160,7 @@ class Deconvolve(Filter):
 
         return View(Item(name='inputName', editor=CBEditor(choices=self._namespace_keys)),
                     Item(name='outputName'),
-                    Item(name='processFramesIndividually', label='2D'),
+                    Item(name='dimensionality'),
                     Group(Item(name='method'),
                           Item(name='iterations'),
                           Item(name='offset'),
@@ -1317,7 +1317,7 @@ class Deconvolve(Filter):
         if self.padding > 0:
             res = res[px:-px, py:-py, pz:-pz]
         
-        return res
+        return res.squeeze()
 
     def completeMetadata(self, im):
         im.mdh['Deconvolution.Offset'] = self.offset
