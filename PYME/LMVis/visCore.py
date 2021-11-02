@@ -720,22 +720,10 @@ class VisGUICore(object):
                     args['Multichannel'] = dlg.GetMultichannel()
                 
                     dlg.Destroy()
-        # currently we use, for testing only, a simple check for .csv and .tsv files
-        # and then implictly flag that the new reader should be used (indicated by no args being set)
-        # we only do this though if the 'VisGUI-use_csv_reader' config option is set which would
-        # enable integrating this into the main PYME release even in an immature form while not affecting
-        # anybody who hasn't eplicitly set this config option
-        # 
-        # Note: currently completely bypasses the ImportTextDialog - just for proof of principle
-        #       eventual proper integration should likely integrate going through a suitably
-        #       modified ImportTextDialog, at least if any issues are encountered upon parsing the
-        #       file and/or a suitable chosen config option is set
-        elif ((os.path.splitext(filename)[1] == '.csv' or
-               os.path.splitext(filename)[1] == '.tsv') and
-              PYME.config.get('VisGUI-use_csv_reader', False)):
-            pass # we do not need any args when using our CSVSMLMReader
+
         else: #assume it's a text file
             from PYME.LMVis import importTextDialog
+            from PYME.IO import csv_flavours
         
             dlg = importTextDialog.ImportTextDialog(self, filename)
             ret = dlg.ShowModal()
@@ -743,11 +731,18 @@ class VisGUICore(object):
             if not ret == wx.ID_OK:
                 dlg.Destroy()
                 return #we cancelled
+            
+            text_options = {'columnnames': dlg.GetFieldNames(),
+                            'skiprows' : dlg.GetNumberComments(),
+                            'delimiter' : dlg.GetDelim(),
+                            'invalid_raise' : not csv_flavours.csv_flavours[dlg.GetFlavour()].get('ignore_errors', False),
+                            }
         
-            args['FieldNames'] = dlg.GetFieldNames()
+            #args['FieldNames'] = dlg.GetFieldNames()
             # remove trailing whitespace/line brake on last field name
-            args['FieldNames'][-1] = args['FieldNames'][-1].rstrip()
-            args['SkipRows'] = dlg.GetNumberComments()
+            #args['FieldNames'][-1] = args['FieldNames'][-1].rstrip()
+            #args['SkipRows'] = dlg.GetNumberComments()
+            args['text_options'] = text_options
             args['PixelSize'] = dlg.GetPixelSize()
         
             #print 'Skipping %d rows' %args['SkipRows']
