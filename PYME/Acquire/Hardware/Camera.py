@@ -29,6 +29,8 @@
 from threading import Lock
 
 from PYME.IO import MetaDataHandler
+from PYME import config
+
 import numpy as np
 import logging
 logger = logging.getLogger(__name__)
@@ -682,15 +684,57 @@ class Camera(object):
         """
         raise NotImplementedError("Implemented in derived class.")
 
+    
+    _hardcoded_properties = {} # no hardcoded cams by default - generally used only for backwards compatibility
+    
+    def _preamp_mode_repr(self):
+        """
+        Should return a representation of the camera preamp mode that can be used as a dictionary key.
+        Should be overriden in derived classes if they have any setable preamp gain modes to speak of.
+        This is used to look up noise properties by preamp setting, see noise_properties below.
+        """        
+        return 'fixed'
+
+
+    def GetCamPropOrDefault(self,prop,default=None):
+        """
+        return general camera specific properties, typically set in user configuration files;
+        see also PYME.config.get_cam_props().
+
+        Cameras are identified by serial number. Looks for the property first in user config settings. If
+        an entry is found but the property is not defined in the entry, the default value is returned. If
+        no entry is found in the user configuration files then a possibly hardcoded entry is tried (for
+        backwards compatibility).
+
+        This should not be used for noise_properties which have their own method/property below
+        """
+        
+        cnp = config.get_cam_props()
+        serno = self.GetSerialNumber()
+        if serno in cnp:
+            return cnp[serno].get(prop,default)
+        elif serno in self._hardcoded_properties:
+            return self._hardcoded_properties[serno].get(prop,default)
+        else:
+            return default
+
 
     @property
     def noise_properties(self):
         """
+           return the noise properties for the given camera
 
-                Returns
-                -------
+           Looks in user added config files first and then tries entries in the dict
+           `_hardcoded_properties` which derived camera classes should populate for backwards
+           compatibility.
 
-                a dictionary with the following entries:
+           Cameras are identified by serial number. An error is raised if no matching entry
+           is found.
+
+           See PYME.config.get_cam_props() for the format that entries should have; in general
+           the noise properties should be indexed by preamp setting
+
+           When all works as designed a dictionary with the following entries should be returned by noise_properties:
 
                 'ReadNoise' : camera read noise as a standard deviation in units of photoelectrons (e-)
                 'ElectronsPerCount' : AD conversion factor - how many electrons per ADU
@@ -698,14 +742,20 @@ class Camera(object):
                     doi: 10.1109/TED.2003.813462
 
                 and optionally
+
                 'ADOffset' : the dark level (in ADU)
                 'DefaultEMGain' : a sensible EM gain setting to use for localization recording
                 'SaturationThreshold' : the full well capacity (in ADU)
 
-                """
-        
-        raise AttributeError('Implement in derived class')
-        
+           For further examples see PYME.config.get_cam_props(). Details are camera specific.
+
+        """
+        try:
+            return self.GetCamPropOrDefault('noiseProperties')[self._preamp_mode_repr()]
+        except KeyError: # last resort is a runtime error - we can debate what the best solution is
+            # we could also look for a 'default' entry in the _hardcoded_properties
+            raise RuntimeError('camera specific noise props not found for serial no "%s" and preamp mode "%s"' 
+                               % (self.GetSerialNumber(),self._preamp_mode_repr()))
 
     def GetStatus(self):
         """
