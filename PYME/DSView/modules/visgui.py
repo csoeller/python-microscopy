@@ -22,7 +22,8 @@
 
 from PYME.LMVis.imageView2 import ImageViewPanel, ColourImageViewPanel
 # import pylab
-import matplotlib.cm
+#import matplotlib.cm
+from PYME.misc.colormaps import cm
 import numpy
 import wx
 import os
@@ -83,14 +84,22 @@ class visGuiExtras:
                 
 class GLImageView(LMGLShaderCanvas):
     def __init__(self, parent, image, glCanvas, display_opts, show_lut=False, **kwargs):
-        LMGLShaderCanvas.__init__(self, parent=parent, show_lut=show_lut, view=glCanvas.view, **kwargs)
+        if glCanvas is None:
+            view = None
+            self.own_view = True
+        else:
+            view = glCanvas.view 
+            self.own_view = False 
+
+        LMGLShaderCanvas.__init__(self, parent=parent, show_lut=show_lut, view=view, **kwargs)
         
         #cmaps = ['r', 'g', 'b']
         
         self._do = display_opts
         self._do.WantChangeNotification.append(self._sync_display_opts)
         
-        self.wantViewChangeNotification.add(glCanvas)
+        if not glCanvas is None:
+            self.wantViewChangeNotification.add(glCanvas)
         
         self._image = image
         
@@ -105,6 +114,9 @@ class GLImageView(LMGLShaderCanvas):
         
             self.layers.append(l_i)
     
+        if self.own_view:
+            self.fit_bbox()
+
         self._sync_display_opts()
         
     def _sync_display_opts(self):
@@ -116,7 +128,7 @@ class GLImageView(LMGLShaderCanvas):
 def Plug(dsviewer):
     dsviewer.vgextras = visGuiExtras(dsviewer)
 
-    cmaps = [matplotlib.cm.r, matplotlib.cm.g, matplotlib.cm.b]
+    cmaps = [cm.r, cm.g, cm.b]
 
     if not 'ivps' in dir(dsviewer):
         dsviewer.ivps = []
