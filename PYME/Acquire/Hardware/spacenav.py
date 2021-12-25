@@ -72,10 +72,11 @@ class SpaceNavigator(object):
 class SpaceNavPiezoCtrl(object):
     FULL_SCALE = 350.
     EVENT_RATE = 6.
-    def __init__(self, spacenav, pz, pxy):
+    def __init__(self, spacenav, pz, pxy, enabled=True):
         self.spacenav = spacenav
         self.pz = pz#, self.px, self.py = piezos
         self.pxy = pxy
+        self._enabled = enabled
         
         self.xy_sensitivity = .01 #um/s
         self.z_sensitivity = -2 #um/s
@@ -87,8 +88,19 @@ class SpaceNavPiezoCtrl(object):
         self.update_n= 0
         self.lastTime = 0
         
+    def enable(self):
+        self._enabled = True
+
+    def disable(self):
+        self._enabled = False
+
+    def enabled(self):
+        return self._enabled
         
     def updatePosition(self, sn):
+        if not self._enabled:
+            return
+        
         sv = np.array([sn.x, sn.y, sn.z])/self.FULL_SCALE
         norm = np.linalg.norm(sv)
         if self.update_n % 10:
