@@ -87,10 +87,6 @@ class TrackerPlotPanel(PlotPanel):
             self.canvas.draw()
 
 
-resx = []
-resy = []
-resz = []
-
 class CalculateZfactorDialog(wx.Dialog):
     def __init__(self):
         self.Zfactorfilename = ''
@@ -141,20 +137,21 @@ class CalculateZfactorDialog(wx.Dialog):
         import PYMEcs.Analysis.offlineTracker as otrack
 
         ds = im.ImageStack(filename=self.Zfactorfilename)
-        dataset = ds.data[:,:,:].squeeze()
+        dataset = ds.data_xyztc[:,:,:,0,0].squeeze()
         refim0 = dataset[:,:,10:91:4]
         calImages0, calFTs0, dz0, dzn0, mask0, X0, Y0 = otrack.genRef(refim0,normalised=False)
 
-        del resx[:]
-        del resy[:]
-        del resz[:] # empty all these three lists every time before a new plot
+        self.plotPan.resx = []
+        self.plotPan.resy = []
+        self.plotPan.resz = []
+        # empty all these three lists every time before a new plot
 
         for i in range(dataset.shape[2]):
             image = dataset[:,:,i]
             driftx, drifty, driftz, cm, d = otrack.compare(calImages0, calFTs0, dz0, dzn0, 10, image, mask0, X0, Y0, deltaZ=0.2)
-            resx.append(driftx)
-            resy.append(drifty)
-            resz.append(driftz)
+            self.plotPan.resx.append(driftx)
+            self.plotPan.resy.append(drifty)
+            self.plotPan.resz.append(driftz)
 
         self.plotPan.draw()
         self.plotPan.Refresh()
@@ -162,10 +159,19 @@ class CalculateZfactorDialog(wx.Dialog):
 
 class ZFactorPlotPanel(PlotPanel):
 
+    def __init__(self, parent, *args, **kwargs):
+        self.resx = []
+        self.resy = []
+        self.resz = []
+        PlotPanel.__init__(self, parent, *args, **kwargs)
+
     def draw(self):
-        dznm = 1e3*np.array(resz)
-        dxnm = 110*np.array(resx)
-        dynm = 110*np.array(resy)
+
+        if len(self.resz) < 1:
+            return
+        dznm = 1e3*np.array(self.resz)
+        dxnm = 110*np.array(self.resx)
+        dynm = 110*np.array(self.resy)
         t = np.arange(dznm.shape[0])
 
         dzexp = dznm[50-4:50+5]
