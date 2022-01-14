@@ -349,7 +349,7 @@ class uc480Camera(Camera):
         ret = uc480.CALL('WaitForNextImage', self.boardHandle, 1000, byref(pData), byref(bufID))
         
         if not ret == uc480.IS_SUCCESS:
-            print('Wait for image failed with: %s' % ret)
+            print('Wait for image failed with: %d, %s' % GetError(ret))
             return
             
         ret = uc480.CALL('CopyImageMem', self.boardHandle, pData, bufID, self.transferBuffer.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)))
