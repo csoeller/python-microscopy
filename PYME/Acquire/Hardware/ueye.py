@@ -96,7 +96,8 @@ class UEyeCamera(Camera):
 
         # work out the camera base parameters for this sensortype
         self.baseProps = BaseProps.get(self.sensor_type,BaseProps['default'])
-                
+        # need to set _integ_time property before calling setROI
+        self.SetIntegTime(0.1)                
         self.SetROI(0, 0, self._chip_size[0], self._chip_size[1])
         
         self.check_success(ueye.is_SetColorMode(self.h, getattr(ueye, 
@@ -111,7 +112,6 @@ class UEyeCamera(Camera):
         self.n_accum = 1
         self.n_accum_current = 0
         
-        self.SetIntegTime(0.1)
         self.Init()
     
     def check_success(self, function_return):
@@ -299,6 +299,11 @@ class UEyeCamera(Camera):
         self.check_success(ueye.is_Exposure(self.h, 
                                             ueye.IS_EXPOSURE_CMD_SET_EXPOSURE,
                                             exposure, ueye.sizeof(exposure)))
+        self.check_success(ueye.is_Exposure(self.h, 
+                                            ueye.IS_EXPOSURE_CMD_GET_EXPOSURE,
+                                            exposure, ueye.sizeof(exposure)))
+        # we cache integ time to be able to deal with some oddity of cams changing integ time when setting ROIs
+        self._integ_time = integ_time
 
     def GetIntegTime(self):
         """
@@ -313,11 +318,7 @@ class UEyeCamera(Camera):
         --------
         SetIntegTime
         """
-        exposure = ueye.double()
-        self.check_success(ueye.is_Exposure(self.h, 
-                                            ueye.IS_EXPOSURE_CMD_GET_EXPOSURE,
-                                            exposure, ueye.sizeof(exposure)))
-        return exposure.value / 1e3
+        return self._integ_time
 
 
     def GetCycleTime(self):
