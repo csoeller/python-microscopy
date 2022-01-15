@@ -115,7 +115,7 @@ class UEyeCamera(Camera):
         self.Init()
     
     def check_success(self, function_return):
-        if function_return == ueye.IS_NO_SUCCESS:
+        if function_return != ueye.IS_SUCCESS: # note, testing for == IS_NO_SUCCESS misses some issues!
             error, message = GetError(self.h)
             raise RuntimeError('Error %d: %s' % (error, message))
         
@@ -223,12 +223,12 @@ class UEyeCamera(Camera):
         buffer_id = ueye.int()
         
         try:
-            self.check_success(ueye.is_WaitForNextImage(self.h, 1000, data,
+            self.check_success(ueye.is_WaitForNextImage(self.h, self._timeout_ms, data,
                                                         buffer_id))
             self.check_success(ueye.is_CopyImageMem(self.h, data, buffer_id, 
                                                     self.transfer_buffer.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))))
         except RuntimeError as e:
-            logger.error(e.message)
+            logger.error(str(e))
             try:
                 self.check_success(ueye.is_UnlockSeqBuf(self.h, ueye.IS_IGNORE_PARAMETER, data))
             except:
@@ -300,12 +300,10 @@ class UEyeCamera(Camera):
         self.check_success(ueye.is_Exposure(self.h, 
                                             ueye.IS_EXPOSURE_CMD_SET_EXPOSURE,
                                             exposure, ueye.sizeof(exposure)))
-        self.check_success(ueye.is_Exposure(self.h, 
-                                            ueye.IS_EXPOSURE_CMD_GET_EXPOSURE,
-                                            exposure, ueye.sizeof(exposure)))
         # we cache integ time to be able to deal with some oddity of cams changing integ time when setting ROIs
         self._integ_time = integ_time
-
+        self._timeout_ms = int(max(1000,1.5e3*integ_time)) # we need to update the timeout value only when changing integration time
+                                  
     def GetIntegTime(self):
         """
         Get Camera object integration time.
