@@ -227,7 +227,8 @@ class UEyeCamera(Camera):
                                                         buffer_id))
             self.check_success(ueye.is_CopyImageMem(self.h, data, buffer_id, 
                                                     self.transfer_buffer.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))))
-        except RuntimeError:
+        except RuntimeError as e:
+            logger.error(e.message)
             try:
                 self.check_success(ueye.is_UnlockSeqBuf(self.h, ueye.IS_IGNORE_PARAMETER, data))
             except:
