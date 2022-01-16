@@ -346,10 +346,10 @@ class uc480Camera(Camera):
         pData = POINTER(c_char)()
         bufID = c_int(0)
         
-        ret = uc480.CALL('WaitForNextImage', self.boardHandle, 1000, byref(pData), byref(bufID))
+        ret = uc480.CALL('WaitForNextImage', self.boardHandle, self._timeout_ms, byref(pData), byref(bufID))
         
         if not ret == uc480.IS_SUCCESS:
-            print('Wait for image failed with: %s' % ret)
+            print('Wait for image failed with: %d, %s' % GetError(self.boardHandle))
             return
             
         ret = uc480.CALL('CopyImageMem', self.boardHandle, pData, bufID, self.transferBuffer.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)))
@@ -418,6 +418,7 @@ class uc480Camera(Camera):
         logger.debug('frame rate: %f, new frame rate: %f' % (1./iTime, newFrameRate.value))
             
         self.expTime = newExp.value*1e-3
+        self._timeout_ms = int(max(1000,1.5e3*iTime))
 
     def GetIntegTime(self):
         return self.expTime
