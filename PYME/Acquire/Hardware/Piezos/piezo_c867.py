@@ -251,7 +251,10 @@ class piezo_c867T(PiezoBase):
                 
                 #print self.targetPosition, self.stopMove
                 
-                if self.stopMove:
+                if self.stopMove: # SERVOCHECK: check if this is ok to process when servo is off!!!
+                    # note that issueing the HLT command sets an error condition, from the manual: "Error code 10 is set."
+                    # question: should we check the error status to unset the error code from such a HLT command?
+                    logger.warn('piezo_c867T: stopMove issuing HLT command, expect error 10 to be set')
                     self.ser_port.write(b'HLT\n')
                     time.sleep(.1)
                     self.ser_port.write(b'POS? 1 2\n')
@@ -285,20 +288,13 @@ class piezo_c867T(PiezoBase):
                         logger.debug('Setting stage target pos: %s' % pos)
                         time.sleep(.01)
                     
-                #check to see if we're on target
-                self.ser_port.write(b'ONT?\n')
-                self.ser_port.flushOutput()
-                time.sleep(0.005)
-                res1 = self.ser_port.readline()
-                ont1 = int(res1.split(b'=')[1]) == 1
-                res1 = self.ser_port.readline()
-                ont2 = int(res1.split(b'=')[1]) == 1
+                # check to see if we're on target - SERVOCHECK: CS: seems to me this only makes sense when servo is on - check manual
+                # from the manual on 'ONT?' command: "The detection of the on-target state is only possible in closed-loop operation (servo mode ON)"
+                if self.servo:
+                    self.onTarget = np.allclose(self.position, self.targetPosition, atol=self.ptol)
+                else: # servo is off
+                    self.onTarget = False                
                 
-                onT = (ont1 and ont2) or (self.servo == False)
-                self.onTarget = onT and self.onTargetLast
-                self.onTargetLast = onT
-                self.onTarget = np.allclose(self.position, self.targetPosition, atol=self.ptol)
-                    
                 #time.sleep(.1)
                 
             except serial.SerialTimeoutException:
@@ -322,7 +318,17 @@ class piezo_c867T(PiezoBase):
                 
         
     def SetServo(self, state=1):
+        if self.servo and state==0: # we are switching from servo on to off - all moves should be stopped
+            # make sure all moves are stopped
+            # SERVOCHECK: should this be done under the lock or not?
+            self.stopMove()
         self.lock.acquire()
+        if not self.servo and state==1: # we are switching from off to on
+            # make sure no move commands are still in the queue
+            # when we switch back on
+            # this should be achievable by setting target position equal to current position
+            self.lastTargetPosition = self.position.copy()
+            self.targetPosition = self.position.copy()
         try:
             self.ser_port.write(b'SVO 1 %d\n' % state)
             self.ser_port.write(b'SVO 2 %d\n' % state)
