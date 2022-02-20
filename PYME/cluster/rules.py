@@ -224,7 +224,7 @@ class Rule(object):
     
         _search()
         while not queueURLs and (n_retries > 0):
-            logging.info('could not find a rule server, waiting 5s and trying again')
+            logger.info('could not find a rule server, waiting 5s and trying again')
             time.sleep(5)
             n_retries -= 1
             _search()
@@ -291,9 +291,9 @@ class Rule(object):
                   headers={'Content-Type': 'application/json'})
     
         if r.status_code == 200 and r.json()['ok']:
-            logging.debug('Successfully released tasks (%d:%d)' % (release_start, release_end))
+            logger.debug('Successfully released tasks (%d:%d)' % (release_start, release_end))
         else:
-            logging.error('Failed on releasing tasks with status code: %d' % r.status_code)
+            logger.error('Failed on releasing tasks with status code: %d' % r.status_code)
 
     def _mark_complete(self):
         """ Thin wrapper around release_rule_tasks api endpoint"""
@@ -305,12 +305,12 @@ class Rule(object):
                   headers={'Content-Type': 'application/json'})
     
         if r.status_code == 200 and r.json()['ok']:
-            logging.debug('Successfully marked rule as complete')
+            logger.debug('Successfully marked rule as complete')
         else:
-            logging.error('Failed to mark rule complete with status code: %d' % r.status_code)
+            logger.error('Failed to mark rule complete with status code: %d' % r.status_code)
 
     def _poll_loop(self):
-        logging.debug('task pusher poll loop started')
+        logger.debug('task pusher poll loop started')
     
         while (self.doPoll == True):
             try:
@@ -332,7 +332,7 @@ class Rule(object):
                     pass
                 logger.debug('all tasks pushed, marking rule as complete')
                 self._mark_complete()
-                logging.debug('ending polling loop.')
+                logger.debug('ending polling loop.')
                 self.doPoll = False
             else:
                 time.sleep(1)
@@ -559,7 +559,7 @@ class LocalisationRule(Rule):
 
         """
         #set up results file:
-        logging.debug('resultsURI: ' + self.worker_resultsURI)
+        logger.debug('resultsURI: ' + self.worker_resultsURI)
         clusterResults.fileResults(self.worker_resultsURI + '/MetaData', self.mdh)
         
         # defer copying events to after series completion
@@ -612,12 +612,12 @@ class LocalisationRule(Rule):
 
         """
         numTotalFrames = self.total_frames
-        logging.debug('numTotalFrames: %s, _next_release_start: %d' % (numTotalFrames, self._next_release_start))
+        logger.debug('numTotalFrames: %s, _next_release_start: %d' % (numTotalFrames, self._next_release_start))
 
         if numTotalFrames <= self._next_release_start:
             raise NoNewTasks('not new localisation tasks available at this time')
         else:
-            logging.debug('we have unpublished frames - push them')
+            logger.debug('we have unpublished frames - push them')
             release_end = min(self._next_release_start + 100000, numTotalFrames)
             release_start = self._next_release_start
             self._next_release_start = release_end #note - we use standard slice indexing where release_end = last_frame_idx +1 = the start idx of the next release
