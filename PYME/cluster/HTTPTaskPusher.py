@@ -37,7 +37,7 @@ def _getTaskQueueURI(n_retries=2):
                 
     _search()
     while not queueURLs and (n_retries > 0):
-        logging.info('could not find a distributor, waiting 5s and trying again')
+        logger.info('could not find a distributor, waiting 5s and trying again')
         time.sleep(5)
         n_retries -= 1
         _search()
@@ -96,7 +96,7 @@ def launch_localize(analysisMDH, seriesName):
     -------
 
     """
-    import logging
+    # import logging # already imported at the top of the file
     import json
     from PYME.IO import MetaDataHandler
     from PYME.Analysis import MetaData
@@ -104,7 +104,7 @@ def launch_localize(analysisMDH, seriesName):
     from PYME.IO import unifiedIO
 
     resultsFilename = verify_cluster_results_filename(genClusterResultFileName(seriesName))
-    logging.debug('Results file: ' + resultsFilename)
+    logger.debug('Results file: ' + resultsFilename)
 
     resultsMdh = MetaDataHandler.NestedClassMDHandler()
     # NB - anything passed in analysis MDH will wipe out corresponding entries in the series metadata
@@ -121,7 +121,7 @@ def launch_localize(analysisMDH, seriesName):
     pusher = HTTPTaskPusher.HTTPTaskPusher(dataSourceID=seriesName,
                                            metadata=resultsMdh, resultsFilename=resultsFilename)
 
-    logging.debug('Queue created')
+    logger.debug('Queue created')
 
 
 class HTTPTaskPusher(object):
@@ -172,7 +172,7 @@ class HTTPTaskPusher(object):
         self.ds = DataSource(self.dataSourceID)
         
         #set up results file:
-        logging.debug('resultsURI: ' + self.resultsURI)
+        logger.debug('resultsURI: ' + self.resultsURI)
         clusterResults.fileResults(self.resultsURI + '/MetaData', metadata)
         clusterResults.fileResults(self.resultsURI + '/Events', self.ds.getEvents())
 
@@ -202,9 +202,9 @@ class HTTPTaskPusher(object):
                           headers={'Content-Type': 'application/json'})
 
         if r.status_code == 200 and r.json()['ok']:
-            logging.debug('Successfully posted tasks')
+            logger.debug('Successfully posted tasks')
         else:
-            logging.error('Failed on posting tasks with status code: %d' % r.status_code)
+            logger.error('Failed on posting tasks with status code: %d' % r.status_code)
 
     @property
     def _taskTemplate(self):
@@ -223,10 +223,10 @@ class HTTPTaskPusher(object):
 
     def fileTasksForFrames(self):
         numTotalFrames = self.ds.getNumSlices()
-        logging.debug('numTotalFrames: %s, currentFrameNum: %d' % (numTotalFrames, self.currentFrameNum))
+        logger.debug('numTotalFrames: %s, currentFrameNum: %d' % (numTotalFrames, self.currentFrameNum))
         numFramesOutstanding = 0
         while  numTotalFrames > (self.currentFrameNum + 1):
-            logging.debug('we have unpublished frames - push them')
+            logger.debug('we have unpublished frames - push them')
 
             #turn our metadata to a string once (outside the loop)
             #mdstring = self.mdh.to_JSON() #TODO - use a URI instead
@@ -248,10 +248,10 @@ class HTTPTaskPusher(object):
 
             # r = requests.post('%s/distributor/tasks?queue=%s' % (self.taskQueueURI, self.queueID), data=task_list)
             # if r.status_code == 200 and r.json()['ok']:
-            #     logging.debug('Successfully posted tasks')
+            #     logger.debug('Successfully posted tasks')
             #     #self.currentFrameNum = newFrameNum
             # else:
-            #     logging.error('Failed on posting tasks with status code: %d' % r.status_code)
+            #     logger.error('Failed on posting tasks with status code: %d' % r.status_code)
 
             threading.Thread(target=self._postTasks, args=(task_list,)).start()
 
@@ -264,14 +264,14 @@ class HTTPTaskPusher(object):
 
     
     def _updatePoll(self):
-        logging.debug('task pusher poll loop started')
+        logger.debug('task pusher poll loop started')
         #wait until clusterIO caches clear to avoid replicating the results file.
         time.sleep(1.5)
         
         while (self.doPoll == True):
             framesOutstanding = self.fileTasksForFrames()
             if self.ds.is_complete and not (framesOutstanding > 0):
-                logging.debug('all tasks pushed, ending loop.')
+                logger.debug('all tasks pushed, ending loop.')
                 self.doPoll = False
             else:
                 time.sleep(1)
@@ -319,9 +319,9 @@ class RecipePusher(object):
                    headers={'Content-Type': 'application/json'})
 
         if r.status_code == 200 and r.json()['ok']:
-            logging.debug('Successfully posted tasks')
+            logger.debug('Successfully posted tasks')
         else:
-            logging.error('Failed on posting tasks with status code: %d' % r.status_code)
+            logger.error('Failed on posting tasks with status code: %d' % r.status_code)
 
 
     def _generate_task(self, **kwargs):
@@ -357,7 +357,7 @@ class RecipePusher(object):
         logger.debug('inputs = %s' % inputs)
 
         while numTotalFrames > (self.currentFrameNum + 1):
-            logging.debug('we have unpublished frames - push them')
+            logger.debug('we have unpublished frames - push them')
 
             newFrameNum = min(self.currentFrameNum + 1000, numTotalFrames)
 

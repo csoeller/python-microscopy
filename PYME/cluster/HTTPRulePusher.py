@@ -41,7 +41,7 @@ def _getTaskQueueURI(n_retries=2):
                 
     _search()
     while not queueURLs and (n_retries > 0):
-        logging.info('could not find a rule server, waiting 5s and trying again')
+        logger.info('could not find a rule server, waiting 5s and trying again')
         time.sleep(5)
         n_retries -= 1
         _search()
@@ -129,7 +129,7 @@ def launch_localize(analysisMDH, seriesName):
     pusher = HTTPRulePusher(dataSourceID=seriesName,
                                            metadata=resultsMdh, resultsFilename=resultsFilename)
 
-    logging.debug('Queue created')
+    logger.debug('Queue created')
 
 
 class HTTPRulePusher(object):
@@ -183,7 +183,7 @@ class HTTPRulePusher(object):
         logger.debug('DataSource.__class__: %s' % self.ds.__class__)
         
         #set up results file:
-        logging.debug('resultsURI: ' + self.resultsURI)
+        logger.debug('resultsURI: ' + self.resultsURI)
         clusterResults.fileResults(self.resultsURI + '/MetaData', metadata)
         evts = self.ds.getEvents()
         if evts:
@@ -240,17 +240,17 @@ class HTTPRulePusher(object):
         if r.status_code == 200:
             resp = r.json()
             self._ruleID = resp['ruleID']
-            logging.debug('Successfully created rule')
+            logger.debug('Successfully created rule')
         else:
-            logging.error('Failed creating rule with status code: %d' % r.status_code)
+            logger.error('Failed creating rule with status code: %d' % r.status_code)
 
 
     def fileTasksForFrames(self):
         numTotalFrames = self.ds.getNumSlices()
-        logging.debug('numTotalFrames: %s, currentFrameNum: %d' % (numTotalFrames, self.currentFrameNum))
+        logger.debug('numTotalFrames: %s, currentFrameNum: %d' % (numTotalFrames, self.currentFrameNum))
         numFramesOutstanding = 0
         while  numTotalFrames > (self.currentFrameNum + 1):
-            logging.debug('we have unpublished frames - push them')
+            logger.debug('we have unpublished frames - push them')
 
             #turn our metadata to a string once (outside the loop)
             #mdstring = self.mdh.to_JSON() #TODO - use a URI instead
@@ -265,9 +265,9 @@ class HTTPRulePusher(object):
                        headers={'Content-Type': 'application/json'})
 
             if r.status_code == 200 and r.json()['ok']:
-                logging.debug('Successfully posted tasks')
+                logger.debug('Successfully posted tasks')
             else:
-                logging.error('Failed on posting tasks with status code: %d' % r.status_code)
+                logger.error('Failed on posting tasks with status code: %d' % r.status_code)
 
             self.currentFrameNum = newFrameNum
 
@@ -278,14 +278,14 @@ class HTTPRulePusher(object):
 
     
     def _updatePoll(self):
-        logging.debug('task pusher poll loop started')
+        logger.debug('task pusher poll loop started')
         #wait until clusterIO caches clear to avoid replicating the results file.
         time.sleep(1.5)
         
         while (self.doPoll == True):
             framesOutstanding = self.fileTasksForFrames()
             if self.ds.is_complete and not (framesOutstanding > 0):
-                logging.debug('all tasks pushed, ending loop.')
+                logger.debug('all tasks pushed, ending loop.')
                 self.doPoll = False
             else:
                 time.sleep(1)
@@ -373,9 +373,9 @@ class RecipePusher(object):
         if r.status_code == 200:
             resp = r.json()
             self._ruleID = resp['ruleID']
-            logging.debug('Successfully created rule')
+            logger.debug('Successfully created rule')
         else:
-            logging.error('Failed creating rule with status code: %d' % r.status_code)
+            logger.error('Failed creating rule with status code: %d' % r.status_code)
 
         
 
