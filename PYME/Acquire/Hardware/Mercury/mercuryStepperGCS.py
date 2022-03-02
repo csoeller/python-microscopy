@@ -85,8 +85,8 @@ class mercuryStepper(base_piezo.PiezoBase):
 
             #initialise and calibrate axes
             for a in self.axes:
-                self.set('SVO', a, 1)
-                self.set('FRF', a)
+                self.set('SVO', a, 1, omit_axis=True)
+                self.set('FRF', a, omit_axis=True)
 
             self.referencing = True
             self.onTarget = False
@@ -146,11 +146,14 @@ class mercuryStepper(base_piezo.PiezoBase):
     def run_cmd(self, command, controllerID, query=False):
         cmd = '%d %s\n' % (controllerID, command)
         #print('cmd:', cmd)
+        logger.debug('sending cmd to serialport: %s - Controller ID %d' % (cmd, controllerID))
         self.ser_port.write(cmd.encode())
         self.ser_port.flush()
 
         if query:
-            resp, src = self._strip_response_address(self.ser_port.readline().decode())
+            raw_resp = self.ser_port.readline()
+            logger.debug('received response from serial port: %s' % raw_resp)
+            resp, src = self._strip_response_address(raw_resp.decode())
             if (src != controllerID):
                 logger.error('unexpected response source')
         else:
@@ -161,14 +164,14 @@ class mercuryStepper(base_piezo.PiezoBase):
 
         if err != 0:
             # we have an error status
-            logger.error('Error code: [%d] on command "%s", controler %d'%(err, command, controllerID))
+            logger.error('Error code: [%d] on command "%s", controller %d'%(err, command, controllerID))
 
         return resp
 
     def query(self, command, axis, extra_params=[]):
         assert(command.endswith('?'))
         controller = self.axes.index(axis) + 1
-        cmd = ' '.join([command, axis] + extra_params)
+        cmd = ' '.join([command, ] + extra_params)
         resp = self.run_cmd(cmd, controllerID=controller, query=True).split('=')[-1]
         return resp
 
