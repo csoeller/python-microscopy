@@ -31,6 +31,13 @@ import threading
 import logging
 logger = logging.getLogger(__name__)
 
+try:
+    import pipython.pidevice.gcserror as gcserr
+except ImportError:
+    _has_gcserr = False
+else:
+    _has_gcserr = True
+
 class tPoll(threading.Thread):
     def __init__(self, stepper):
         self.stepper = stepper
@@ -165,7 +172,9 @@ class mercuryStepper(base_piezo.PiezoBase):
         if err != 0:
             # we have an error status
             logger.error('Error code: [%d] on command "%s", controller %d'%(err, command, controllerID))
-
+            if _has_gcserr:
+                logger.error('GCS error translation: %s' % gcserr.GCSError.translate_error(err))
+                
         return resp
 
     def query(self, command, axis, extra_params=[]):
