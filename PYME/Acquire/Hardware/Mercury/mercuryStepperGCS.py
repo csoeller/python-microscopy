@@ -68,9 +68,10 @@ class mercuryJoystick:
 
 class mercuryStepper(base_piezo.PiezoBase):
     units_um = 1000
-    def __init__(self, comPort='COM4', baud=115200, axes=['X', 'Y'], steppers=['M-229.25S', 'M-229.25S']):
+    def __init__(self, comPort='COM4', baud=115200, axes=['X', 'Y'], steppers=['M-229.25S', 'M-229.25S'], debugSerial=False):
         self.axes = axes
         self.steppers = steppers
+        self.debugSerial = debugSerial
         self.joystickOn = False
 
         self.joystick = mercuryJoystick(self)
@@ -115,8 +116,8 @@ class mercuryStepper(base_piezo.PiezoBase):
             for i, a in enumerate(self.axes):
                 self.set('JAX', a, '1 1 %s' %a, omit_axis=True)
 
-                #set joystick to use parabolic loopup table
-                # self.set('JDT', a, '1 2', omit_axis=True) - this does not seem to work, omit for now
+                # set joystick to use parabolic loopup table, means we need to pass <uint> value 2; 1 selects linear
+                self.set('JDT', a, '1 1 2', omit_axis=True) # the format is JDT <JoystickID> <JoystickAxis> <uint>, first two params are always 1
 
 
     def _get_status(self):
@@ -153,13 +154,15 @@ class mercuryStepper(base_piezo.PiezoBase):
     def run_cmd(self, command, controllerID, query=False):
         cmd = '%d %s\n' % (controllerID, command)
         #print('cmd:', cmd)
-        logger.debug('sending cmd to serialport: %s - Controller ID %d' % (cmd, controllerID))
+        if self.debugSerial:
+            logger.debug('sending cmd to serialport: %s - Controller ID %d' % (cmd, controllerID))
         self.ser_port.write(cmd.encode())
         self.ser_port.flush()
 
         if query:
             raw_resp = self.ser_port.readline()
-            logger.debug('received response from serial port: %s' % raw_resp)
+            if self.debugSerial:
+                logger.debug('received response from serial port: %s' % raw_resp)
             resp, src = self._strip_response_address(raw_resp.decode())
             if (src != controllerID):
                 logger.error('unexpected response source')
