@@ -92,8 +92,8 @@ class mercuryStepper(base_piezo.PiezoBase):
 
             #initialise and calibrate axes
             for a in self.axes:
-                self.set('SVO', a, 1, omit_axis=True)
-                self.set('FRF', a, omit_axis=True)
+                self.set('SVO', a, 1)
+                self.set('FRF', a)
 
             self.referencing = True
             self.onTarget = False
@@ -116,7 +116,7 @@ class mercuryStepper(base_piezo.PiezoBase):
                 self.set('JAX', a, '1 1 %s' %a, omit_axis=True)
 
                 #set joystick to use parabolic loopup table
-                self.set('JDT', a, '1 2', omit_axis=True)
+                # self.set('JDT', a, '1 2', omit_axis=True) - this does not seem to work, omit for now
 
 
     def _get_status(self):
@@ -180,7 +180,7 @@ class mercuryStepper(base_piezo.PiezoBase):
     def query(self, command, axis, extra_params=[]):
         assert(command.endswith('?'))
         controller = self.axes.index(axis) + 1
-        cmd = ' '.join([command, ] + extra_params)
+        cmd = ' '.join([command, axis] + extra_params)
         resp = self.run_cmd(cmd, controllerID=controller, query=True).split('=')[-1]
         return resp
 
