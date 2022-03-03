@@ -31,6 +31,13 @@ import threading
 import logging
 logger = logging.getLogger(__name__)
 
+try:
+    import pipython.pidevice.gcserror as gcserr
+except ImportError:
+    _has_gcserr = False
+else:
+    _has_gcserr = True
+
 class tPoll(threading.Thread):
     def __init__(self, stepper):
         self.stepper = stepper
@@ -109,7 +116,7 @@ class mercuryStepper(base_piezo.PiezoBase):
                 self.set('JAX', a, '1 1 %s' %a, omit_axis=True)
 
                 #set joystick to use parabolic loopup table
-                self.set('JDT', a, '1 2', omit_axis=True)
+                # self.set('JDT', a, '1 2', omit_axis=True) - this does not seem to work, omit for now
 
 
     def _get_status(self):
@@ -146,11 +153,14 @@ class mercuryStepper(base_piezo.PiezoBase):
     def run_cmd(self, command, controllerID, query=False):
         cmd = '%d %s\n' % (controllerID, command)
         #print('cmd:', cmd)
+        logger.debug('sending cmd to serialport: %s - Controller ID %d' % (cmd, controllerID))
         self.ser_port.write(cmd.encode())
         self.ser_port.flush()
 
         if query:
-            resp, src = self._strip_response_address(self.ser_port.readline().decode())
+            raw_resp = self.ser_port.readline()
+            logger.debug('received response from serial port: %s' % raw_resp)
+            resp, src = self._strip_response_address(raw_resp.decode())
             if (src != controllerID):
                 logger.error('unexpected response source')
         else:
@@ -161,8 +171,10 @@ class mercuryStepper(base_piezo.PiezoBase):
 
         if err != 0:
             # we have an error status
-            logger.error('Error code: [%d] on command "%s", controler %d'%(err, command, controllerID))
-
+            logger.error('Error code: [%d] on command "%s", controller %d'%(err, command, controllerID))
+            if _has_gcserr:
+                logger.error('GCS error translation: %s' % gcserr.GCSError.translate_error(err))
+                
         return resp
 
     def query(self, command, axis, extra_params=[]):
