@@ -78,7 +78,7 @@ class mercuryStepper(base_piezo.PiezoBase):
 
         self.lock = threading.RLock()
         
-
+        self.axis_referenced = [None for a in self.axes]
 
         #connect to the controller
         self.ser_port = serial.Serial(comPort, baud, timeout=2, writeTimeout=2)
@@ -216,6 +216,11 @@ class mercuryStepper(base_piezo.PiezoBase):
                     tgt = self.maxTravel[iChan]
             else:
                 tgt = self.minTravel[iChan]
+
+            if self.axis_referenced[iChan] is None:
+                # check if axis is referenced
+                self.axis_referenced[iChan] = int(self.query('FRF?', self.axes[iChan]))
+                logger.debug('Axis %s referenced state: %d', %(self.axes[iChan],self.axis_referenced[iChan]))
 
             self.onTarget = False
             self.set('MOV', self.axes[iChan], '%3.4f' % fPos)
