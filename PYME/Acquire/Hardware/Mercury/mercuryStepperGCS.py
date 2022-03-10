@@ -220,7 +220,7 @@ class mercuryStepper(base_piezo.PiezoBase):
             if self.axis_referenced[iChan] is None:
                 # check if axis is referenced
                 self.axis_referenced[iChan] = int(self.query('FRF?', self.axes[iChan]))
-                logger.debug('Axis %s referenced state: %d', %(self.axes[iChan],self.axis_referenced[iChan]))
+                logger.debug('Axis %s referenced state: %d' % (self.axes[iChan],self.axis_referenced[iChan]))
 
             self.onTarget = False
             self.set('MOV', self.axes[iChan], '%3.4f' % fPos)
