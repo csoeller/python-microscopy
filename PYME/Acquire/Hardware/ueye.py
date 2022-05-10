@@ -8,7 +8,7 @@ for the same camera, this module might disappear once api compatibility issues i
 uc480 instead of this if at all possible).
 
 '''
-from PYME.Acquire.Hardware.Camera import Camera
+from PYME.Acquire.Hardware.Camera import Camera, MultiviewCameraMixin
 from pyueye import ueye
 import ctypes
 import threading
@@ -59,6 +59,11 @@ BaseProps = {
         'ReadNoise' : 6.0,
         'ADOffset' : 10
     },
+    'UI327x' : {  # calibrated by AESB 2022/04 on S/N 4103211322 running in 12 bit mode, 100 ms integration time.
+        'ElectronsPerCount': 2.706,  # fitted from Var [ADU^2] vs Mean [ADU] plot (1/slope)
+        'ReadNoise' : 2.425, # median of 100 ms varmap from gen_sCMOS_maps.py is 5.883 e-^2. ReadNoise is sigma, i.e. sqrt of that
+        'ADOffset' : 7.67,  # median of 100 ms dark map from gen_sCMOS_maps.py
+    },
     'default' : { # fairly arbitrary values
         'ElectronsPerCount'  : 10,
         'ReadNoise' : 20,
@@ -98,10 +103,19 @@ class UEyeCamera(Camera):
         self.baseProps = BaseProps.get(self.sensor_type,BaseProps['default'])
         # need to set _integ_time property before calling setROI
         self.SetIntegTime(0.1)                
+        
+        # note that some uEye cameras have a sensor size which exceeds the 'usable' ROI
         self.SetROI(0, 0, self._chip_size[0], self._chip_size[1])
         
         self.check_success(ueye.is_SetColorMode(self.h, getattr(ueye, 
                                                                 'IS_CM_MONO%d' % self.nbits)))
+        
+        # turn off hardware gamma if supported.
+        hw_gamma = ueye.is_SetHardwareGamma(self.h, ueye.int(ueye.IS_GET_HW_SUPPORTED_GAMMA))
+        if hw_gamma == ueye.IS_SET_HW_GAMMA_ON:  # SetHardwareGamma returns IS_SET_HW_GAMMA_ON (1) if supported
+            logger.debug('model supports hardware gamma correction, turning it off')
+            self.check_success(ueye.is_SetHardwareGamma(self.h, ueye.IS_SET_HW_GAMMA_OFF))
+
         self.SetAcquisitionMode(self.MODE_CONTINUOUS)
         self._buffers = []
         self.full_buffers = queue.Queue()
@@ -456,10 +470,14 @@ class UEyeCamera(Camera):
     
     @property
     def noise_properties(self):
-        return {'ElectronsPerCount': self.baseProps['ElectronsPerCount']/self.GetGainFactor(),
-                'ReadNoise': self.baseProps['ReadNoise'],
-                'ADOffset': self.baseProps['ADOffset'],
-                'SaturationThreshold': 2 ** self.nbits  - 1}
+        try:  # try and get noise properties following the current convention
+            return super().noise_properties
+        except RuntimeError:  # fall back loudly on "base properties"
+            logger.exception('Noise properties not set up for this camera, falling back on values which are likely wrong')
+            return {'ElectronsPerCount': self.baseProps['ElectronsPerCount']/self.GetGainFactor(),
+                    'ReadNoise': self.baseProps['ReadNoise'],
+                    'ADOffset': self.baseProps['ADOffset'],
+                    'SaturationThreshold': 2 ** self.nbits  - 1}
 
     
     # @property
@@ -534,3 +552,11 @@ class UEyeCamera(Camera):
         self.check_success(ueye.is_DeviceInfo(self.h,ueye.IS_DEVICE_INFO_CMD_GET_DEVICE_INFO,
                                               dev_info,ueye.sizeof(dev_info)))
         return dev_info
+
+#TODO - replace MultiviewCameraMixin with a Multiview wrapper so that we don't need to have explicit multiview versions of all cameras.
+class MultiviewUEye(MultiviewCameraMixin, UEyeCamera):
+    def __init__(self, camNum, multiview_info, nbits=8):
+        UEyeCamera.__init__(self, camNum, nbits)
+        # default to the whole chip        
+        default_roi = dict(xi=0, xf=int(self._chip_size[0]), yi=0, yf=int(self._chip_size[1]))
+        MultiviewCameraMixin.__init__(self, multiview_info, default_roi, UEyeCamera)
