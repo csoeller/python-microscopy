@@ -14,6 +14,8 @@ import six
 import skimage.filters as skf
 import inspect
 import sys
+import logging
+logger = logging.getLogger(__name__)
 
 """Automagically generate filter objects for all skimage filters"""
 
@@ -106,8 +108,8 @@ for filtName in skFilterNames:
                         argTypes[a] = 'dtype'
             
             #disregard parameters which need another image for now        
-            args = [a for a in args if not argTypes[a] in ['image', 'dict']]
-            
+            args = [a for a in args if not argTypes[a] in ['image', 'dict', 'dtype']]
+            #TODO - log/warn when we ignore parameters
             _argnames = args
         
         
@@ -124,8 +126,6 @@ for filtName in skFilterNames:
                 paramString += '%s = Int(%s)\n    ' % (a, argDefaults[a])
             elif argTypes[a] == 'int_float':
                 paramString += '%s = _IntFloat(%s)\n    ' % (a, argDefaults[a])
-            elif argTypes[a] == 'dtype': # hack for gabor filter dtype argument
-                paramString += '%s = np.%s\n    ' % (a, argDefaults[a].__name__) # we have numpy available as np
 
         doc = filt.__doc__
                 
@@ -134,15 +134,8 @@ for filtName in skFilterNames:
         try:
                 exec(cd)
         except:
-                print("error in the following define - SKIPPING:")
-                print("Unexpected error:", sys.exc_info()[0])
-                print("--------BEGIN SKIPPED DEFINITION------")
-                print(cd)
-                print("--------END SKIPPED DEFINITION------")
-
-
-
-
+                logger.exception("error generating a module for skimage.filters.%s,  skipping" % filtName)
+                logger.debug('Skipped module definition: %s' % cd)
 
  
 #d = {}
