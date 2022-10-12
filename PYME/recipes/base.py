@@ -9,7 +9,7 @@ Created on Mon May 25 17:02:04 2015
 #import wx
 import six
 
-from PYME.recipes.traits import HasTraits, HasStrictTraits, Float, List, Bool, Int, CStr, Enum, File, on_trait_change, Input, Output, Instance
+from PYME.recipes.traits import HasTraits, HasStrictTraits, Float, List, Bool, Int, CStr, Enum, File, on_trait_change, Input, Output, Instance, WeakRef
     
 #for some reason traitsui raises SystemExit when called from sphinx on OSX
 #This is due to the framework build problem of anaconda on OSX, and also
@@ -71,6 +71,7 @@ def register_module(moduleName, prefix=None):
 
         module_names[cls] = full_module_name
         cls._module_name = full_module_name
+        cls._short_name = moduleName # for use in metadata generation
         return cls
         
     return c_decorate
@@ -115,7 +116,7 @@ class ModuleBase(HasStrictTraits):
     If you want side effects - e.g. saving something to disk, look at the OutputModule class.
     """
     _invalidate_parent = Bool(True)
-    _parent=Instance(object)
+    _parent=WeakRef(object, allow_none=True)
 
     _initial_set = Bool(False)
     _success = Bool(False)
@@ -167,7 +168,7 @@ class ModuleBase(HasStrictTraits):
             # don't trigger on private variables
             return
         
-        if self._invalidate_parent and not self.__dict__.get('_parent', None) is None:
+        if self._invalidate_parent and not self._parent is None:
             #print('invalidating')
             self._parent.prune_dependencies_from_namespace(self.outputs)
             
@@ -361,12 +362,32 @@ class ModuleBase(HasStrictTraits):
         return []
     
     def get_params(self):
+        t = self.trait_get()
         editable = self.class_editable_traits()
-        inputs = [tn for tn in editable if tn.startswith('input')]
-        outputs = [tn for tn in editable if tn.startswith('output')]
+        inputs = [tn for tn in editable if (tn.startswith('input') or isinstance(t[tn], Input))]
+        outputs = [tn for tn in editable if (tn.startswith('output') or isinstance(t[tn], Output))]
         params = [tn for tn in editable if not (tn in inputs or tn in outputs or tn.startswith('_'))]
         
         return inputs, outputs, params
+
+    def _params_to_metadata(self, mdh):
+        """
+        Automatically populate metadata with module parameters
+
+        This currently gets called manually in a few modules ...
+
+        TODO - make this automatic.
+        TODO? - resolve ambiguities when the same module appears twice in a recipe (the metadata 
+        will currently reflect the settings of the last module to operate on the data). In practice,
+        probably best addressed by simply saving the whole recipe into the metadata in the output module
+        and then not worrying about the metadata entries saved by individual modules.
+        """
+        _, _, params = self.get_params()
+
+        for p in params:
+            p_name = ''.join([s.capitalize() for s in p.split('_')]) #convert to camel case to follow metadata conventions
+            mdh[f'Processing.{self._short_name}.{p_name}'] = getattr(self, p)
+
         
     def _pipeline_view(self, show_label=True):
         import wx
