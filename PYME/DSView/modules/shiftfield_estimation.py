@@ -48,58 +48,37 @@ class BlobFinder(Plugin):
         dsviewer.AddMenuItem("File>Save", "Save shift maps", self.saveShiftmaps)
 
         dsviewer.paneHooks.append(self.GenBlobFindingPanel)
-        dsviewer.paneHooks.append(self.GenBlobFitPanel)
+        #dsviewer.paneHooks.append(self.GenBlobFitPanel)
         dsviewer.paneHooks.append(self.GenShiftMapPanel)
 
     def GenBlobFindingPanel(self, _pnl):
         item = afp.foldingPane(_pnl, -1, caption="Object Finding", pinned = True)
-
-        pan = wx.Panel(item, -1)
-
-        hsizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        hsizer.Add(wx.StaticText(pan, -1, 'Threshold:'), 0,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
-        self.tThreshold = wx.TextCtrl(pan, -1, value='50', size=(40, -1))
-
-        hsizer.Add(self.tThreshold, 0,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
-
-        pan.SetSizer(hsizer)
-        hsizer.Fit(pan)
-
-        #_pnl.AddFoldPanelWindow(item, pan, fpb.FPB_ALIGN_WIDTH, fpb.FPB_DEFAULT_SPACING, 5)
-        item.AddNewElement(pan)
         
         pan = wx.Panel(item, -1)
+        vsizer=wx.BoxSizer(wx.VERTICAL)
+        
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        hsizer.Add(wx.StaticText(pan, -1, 'Threshold:'), 0,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+        self.tThreshold = wx.TextCtrl(pan, -1, value='50', size=(40, -1))
+        hsizer.Add(self.tThreshold, 0,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+        vsizer.Add(hsizer, 0, wx.ALL, 5)
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        #hsizer.Add(wx.StaticText(pan, -1, 'Method:'), 0,wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
         self.chMethod = wx.Choice(pan, -1, choices=['Simple Threshold', 'SNR Threshold', 'Multi-threshold'])
         self.chMethod.SetSelection(0)
         self.chMethod.Bind(wx.EVT_CHOICE, self.OnChangeMethod)
 
         hsizer.Add(self.chMethod, 0,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
-    
-        pan.SetSizer(hsizer)
-        hsizer.Fit(pan)
-
-        #_pnl.AddFoldPanelWindow(item, pan, fpb.FPB_ALIGN_WIDTH, fpb.FPB_DEFAULT_SPACING, 5)
-        item.AddNewElement(pan)
+        vsizer.Add(hsizer, 0, wx.ALL, 5)
         
-        pan = wx.Panel(item, -1)
-        hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        hsizer.Add(wx.StaticText(pan, -1, 'Channel:'), 0,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+        # hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        # hsizer.Add(wx.StaticText(pan, -1, 'Channel:'), 0,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
     
-        self.chChannel = wx.Choice(pan, -1, choices=self.do.names)
+        # self.chChannel = wx.Choice(pan, -1, choices=self.do.names)
             
-        hsizer.Add(self.chChannel, 1,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
-    
-        pan.SetSizer(hsizer)
-        hsizer.Fit(pan) 
-        
-        item.AddNewElement(pan)
-        
-        pan = wx.Panel(item, -1)
+        # hsizer.Add(self.chChannel, 1,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+        # vsizer.Add(hsizer, 0, wx.ALL, 5)
+
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -108,9 +87,10 @@ class BlobFinder(Plugin):
         self.tBlurSize.Disable()
 
         hsizer.Add(self.tBlurSize, 0,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+        vsizer.Add(hsizer, 0, wx.ALL, 5)
 
-        pan.SetSizer(hsizer)
-        hsizer.Fit(pan)
+        pan.SetSizer(vsizer)
+        vsizer.Fit(pan)
 
         #_pnl.AddFoldPanelWindow(item, pan, fpb.FPB_ALIGN_WIDTH, fpb.FPB_DEFAULT_SPACING, 5)
         item.AddNewElement(pan)
@@ -127,74 +107,20 @@ class BlobFinder(Plugin):
         #_pnl.AddFoldPanelWindow(item, self.cbSNThreshold, fpb.FPB_ALIGN_WIDTH, fpb.FPB_DEFAULT_SPACING, 5)
         #item.AddNewElement(self.cbThresholdRange)
 
-        bFindObjects = wx.Button(item, -1, 'Find')
+        #bFindObjects = wx.Button(item, -1, 'Find')
 
 
-        bFindObjects.Bind(wx.EVT_BUTTON, self.OnFindObjects)
+        #bFindObjects.Bind(wx.EVT_BUTTON, self.OnFindObjects)
         #_pnl.AddFoldPanelWindow(item, bFindObjects, fpb.FPB_ALIGN_WIDTH, fpb.FPB_DEFAULT_SPACING, 10)
-        item.AddNewElement(bFindObjects)
-        _pnl.AddPane(item)
+        #item.AddNewElement(bFindObjects)
+    #     _pnl.AddPane(item)
         
-    def OnChangeMethod(self, event):
-        thresholds = [50, 1, 1]
-        sel = self.chMethod.GetSelection()
-        
-        if sel == 2: #multi-threshold
-            self.tBlurSize.Enable()
-            #self.tThreshold.SetValue('4')
-        else:
-            self.tBlurSize.Disable()
-        
-        #if sel == 1:
-        self.tThreshold.SetValue('%3.1f' % thresholds[sel])
-            
-        #if sel == 
+    
 
-    def OnFindObjects(self, event):
-        threshold = float(self.tThreshold.GetValue())
-        chnum = self.chChannel.GetSelection()
 
-        from PYME.localization.ofind3d import ObjectIdentifier
 
-        if not 'ofd' in dir(self) or not self.ofd.chnum == chnum:
-            #create an object identifier
-            self.ofd = ObjectIdentifier(np.atleast_3d(self.image.data[:,:,:, chnum]))
-            self.ofd.chnum = chnum
-
-        #and identify objects ...
-        if self.chMethod.GetSelection() == 1: #don't detect objects in poisson noise
-            fudgeFactor = 1 #to account for the fact that the blurring etc... in ofind doesn't preserve intensities - at the moment completely arbitrary so a threshold setting of 1 results in reasonable detection.
-            threshold =  (numpy.sqrt(self.image.mdh.Camera.ReadNoise**2 + numpy.maximum(self.image.mdh.Camera.ElectronsPerCount*(self.image.mdh.Camera.NoiseFactor**2)*(self.image.data[:,:,:, chnum].astype('f4') - self.image.mdh.Camera.ADOffset)*self.image.mdh.Camera.TrueEMGain, 1))/self.image.mdh.Camera.ElectronsPerCount)*fudgeFactor*threshold
-            self.ofd.FindObjects(threshold, 0)
-        elif self.chMethod.GetSelection() == 2:
-            bs = float(self.tBlurSize.GetValue())
-            self.ofd.FindObjects(threshold, blurRadius = bs, blurRadiusZ = bs)
-        else:
-            self.ofd.FindObjects(threshold,0)
-
-        self.points = numpy.array([[p.x, p.y, p.z] for p in self.ofd])
-
-        self.objPosRA = numpy.rec.fromrecords(self.points, names='x,y,z')
-
-        if self.vObjPos is None:
-            self.vObjPos = recArrayView.ArrayPanel(self.dsviewer, self.objPosRA)
-            self.dsviewer.AddPage(self.vObjPos, caption='Object Positions')
-        else:
-            self.vObjPos.grid.SetData(self.objPosRA)
-
-        if not hasattr(self, '_ovl'):
-            from PYME.DSView import overlays
-            self._ovl = overlays.PointDisplayOverlay(points=self.points, display_name='Blobs')
-            self.view.add_overlay(self._ovl)
-        else:
-            self._ovl.points = self.points
-
-        self._ovl.pointSize = int(self.tROIsize.GetValue())*2+1
-
-        self.dsviewer.update()
-
-    def GenBlobFitPanel(self, _pnl):
-        item = afp.foldingPane(_pnl, -1, caption="Object Fitting", pinned = True)
+    # def GenBlobFitPanel(self, _pnl):
+    #     item = afp.foldingPane(_pnl, -1, caption="Object Fitting", pinned = True)
 #        item = _pnl.AddFoldPanel("Object Fitting", collapsed=False,
 #                                      foldIcons=self.Images)
 
@@ -207,78 +133,73 @@ class BlobFinder(Plugin):
         hsizer.Fit(pan)
         item.AddNewElement(pan)
         
-        bFitObjects = wx.Button(item, -1, 'Fit')
+        bFitObjects = wx.Button(item, -1, 'Find and Fit')
         bFitObjects.Bind(wx.EVT_BUTTON, self.OnFitObjects)
         #_pnl.AddFoldPanelWindow(item, bFitObjects, fpb.FPB_ALIGN_WIDTH, fpb.FPB_DEFAULT_SPACING, 10)
         item.AddNewElement(bFitObjects)
         _pnl.AddPane(item)
 
-    def GenShiftMapPanel(self, _pnl):
-        item = afp.foldingPane(_pnl, -1, caption="Shiftmap", pinned = True)
-
-        pan = wx.Panel(item, -1)
-        vsizer = wx.BoxSizer(wx.VERTICAL)
-        hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        hsizer.Add(wx.StaticText(pan, -1, 'Bead wxy:'), 0,wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-        self.tBeadWXY = wx.TextCtrl(pan, -1, value='125', size=(40, -1))
-        hsizer.Add(self.tBeadWXY, 0,wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-        vsizer.Add(hsizer, 0, wx.ALL, 5)
-
-        hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        hsizer.Add(wx.StaticText(pan, -1, 'Type:'), 0,wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-        self.cShiftfieldType = wx.Choice(pan, -1, choices=['Linear (shift + rotation)', 'Quadratic (shift, rotation, and field-dependent magnification)', 'Spline interpolation (model free)'], size=(40, -1))
-        self.cShiftfieldType.SetSelection(0)
-        hsizer.Add(self.cShiftfieldType, 0,wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-        vsizer.Add(hsizer, 0, wx.ALL, 5)
-
-        pan.SetSizer(vsizer)
-        hsizer.Fit(pan)
-        item.AddNewElement(pan)
+    def OnChangeMethod(self, event):
+        thresholds = [50, 1, 1]
+        sel = self.chMethod.GetSelection()
         
-        bCalcShiftMap = wx.Button(item, -1, 'Shiftmap')
-        bCalcShiftMap.Bind(wx.EVT_BUTTON, progress.managed(self.OnCalcShiftmap, self.dsviewer, 'Calculating shiftmap...'))
-        #_pnl.AddFoldPanelWindow(item, bFitObjects, fpb.FPB_ALIGN_WIDTH, fpb.FPB_DEFAULT_SPACING, 10)
-        item.AddNewElement(bCalcShiftMap)
-        _pnl.AddPane(item)
+        if sel == 2: #multi-threshold
+            self.tBlurSize.Enable()
+            #self.tThreshold.SetValue('4')
+        else:
+            self.tBlurSize.Disable()
+
+        self.tThreshold.SetValue('%3.1f' % thresholds[sel])
+            
+
 
     def OnFitObjects(self, event):
+        from PYME.localization.ofind3d import ObjectIdentifier
         import PYME.localization.FitFactories.Gauss3DFitR as fitMod
         from PYME.IO import MetaDataHandler
         from PYME.IO import tabular
-        chnum = self.chChannel.GetSelection()
         
         mdh = MetaDataHandler.NestedClassMDHandler(self.image.mdh)
         mdh['tIndex'] = 0
         #print(mdh)
         
         self.objFitRes = {}
+
+        thresholds = [float(t) for t in self.tThreshold.GetValue().split(',')]
+        if len(thresholds) == 1:
+            thresholds = thresholds*self.image.data_xyztc.shape[4]
         
         for chnum in range(self.image.data.shape[3]):
-            data = self.image.data[:,:,:,chnum]  
+            data = self.image.data[:,:,:,chnum]
+            ofd =  ObjectIdentifier(np.atleast_3d(data))
+
+            threshold = thresholds[chnum]
+
+            if self.chMethod.GetSelection() == 1: #don't detect objects in poisson noise
+                fudgeFactor = 1 #to account for the fact that the blurring etc... in ofind doesn't preserve intensities - at the moment completely arbitrary so a threshold setting of 1 results in reasonable detection.
+                threshold =  (numpy.sqrt(self.image.mdh.Camera.ReadNoise**2 + numpy.maximum(self.image.mdh.Camera.ElectronsPerCount*(self.image.mdh.Camera.NoiseFactor**2)*(self.image.data[:,:,:, chnum].astype('f4') - self.image.mdh.Camera.ADOffset)*self.image.mdh.Camera.TrueEMGain, 1))/self.image.mdh.Camera.ElectronsPerCount)*fudgeFactor*threshold
+                ofd.FindObjects(threshold, 0)
+            elif self.chMethod.GetSelection() == 2:
+                bs = float(self.tBlurSize.GetValue())
+                ofd.FindObjects(threshold, blurRadius = bs, blurRadiusZ = bs)
+            else:
+                ofd.FindObjects(threshold,0)
             
             if not 'Camera.ADOffset' in mdh.getEntryNames():
                 mdh['Camera.ADOffset'] = data.min()
     
             fitFac = fitMod.FitFactory(data, mdh)
     
-            self.objFitRes[chnum] = numpy.empty(len(self.ofd), fitMod.FitResultsDType)
-            for i in range(len(self.ofd)):
-                p = self.ofd[i]
-                #try:
-                self.objFitRes[chnum][i] = fitFac.FromPoint(round(p.x), round(p.y), round(p.z), roiHalfSize=int(self.tROIsize.GetValue()))
-                #except:
-                #    pass
-    
-    
-            #if self.nObjFit == None:
+            self.objFitRes[chnum] = numpy.empty(len(ofd), fitMod.FitResultsDType)
+            for i in range(len(ofd)):
+                p = ofd[i]
                 
+                self.objFitRes[chnum][i] = fitFac.FromPoint(round(p.x), round(p.y), round(p.z), roiHalfSize=int(self.tROIsize.GetValue()))           
                 
             vObjFit = recArrayView.ArrayPanel(self.dsviewer, self.objFitRes[chnum]['fitResults'])
             self.dsviewer.AddPage(vObjFit, caption = 'Fitted Positions %d - %d' % (chnum, self.nObjFit))
         
         self.nObjFit += 1
-        #else:
-        #    self.vObjFit.grid.SetData(self.objFitRes['fitResults'])
 
         f = tabular.ConcatenateFilter(*[tabular.FitResultsSource(self.objFitRes[chnum], sort=False) for chnum in range(self.image.data.shape[3])], concatKey='channel')  
 
@@ -292,9 +213,50 @@ class BlobFinder(Plugin):
             self._fit_ovl.filter = f
 
         self.dsviewer.update()
+    
+    def GenShiftMapPanel(self, _pnl):
+        item = afp.foldingPane(_pnl, -1, caption="Shiftmap", pinned = True)
+
+        pan = wx.Panel(item, -1)
+        vsizer = wx.BoxSizer(wx.VERTICAL)
+
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        hsizer.Add(wx.StaticText(pan, -1, 'Master Channel:'), 0,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+    
+        self.chChannel = wx.Choice(pan, -1, choices=self.do.names)
+        self.chChannel.Select(0)
+            
+        hsizer.Add(self.chChannel, 1,wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+        vsizer.Add(hsizer, 0, wx.ALL, 5)
+
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        hsizer.Add(wx.StaticText(pan, -1, 'Bead wxy:'), 0,wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+        self.tBeadWXY = wx.TextCtrl(pan, -1, value='125', size=(40, -1))
+        hsizer.Add(self.tBeadWXY, 0,wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+        vsizer.Add(hsizer, 0, wx.ALL, 5)
+
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        hsizer.Add(wx.StaticText(pan, -1, 'Type:'), 0,wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+        self.cShiftfieldType = wx.Choice(pan, -1, choices=['Linear (shift + rotation)', 'Quadratic (shift, rotation, and field-dependent magnification)', 'Spline interpolation (model free)'], size=(40, -1))
+        self.cShiftfieldType.SetSelection(1)
+        hsizer.Add(self.cShiftfieldType, 1,wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+        vsizer.Add(hsizer, 0, wx.ALL|wx.EXPAND, 5)
+
+        pan.SetSizer(vsizer)
+        hsizer.Fit(pan)
+        item.AddNewElement(pan)
+        
+        bCalcShiftMap = wx.Button(item, -1, 'Shiftmap')
+        bCalcShiftMap.Bind(wx.EVT_BUTTON, progress.managed(self.OnCalcShiftmap, self.dsviewer, 'Calculating shiftmap...'))
+        #_pnl.AddFoldPanelWindow(item, bFitObjects, fpb.FPB_ALIGN_WIDTH, fpb.FPB_DEFAULT_SPACING, 10)
+        item.AddNewElement(bCalcShiftMap)
+        _pnl.AddPane(item)
+
+
         
     def OnCalcShiftmap(self, event):
         from PYME.Analysis.points import twoColour, twoColourPlot
+        from PYME.Analysis import fiducial_matching
         # import pylab
         import matplotlib.pyplot as plt
         masterChan = self.chChannel.GetSelection()
@@ -310,7 +272,9 @@ class BlobFinder(Plugin):
 
         wxy_bead = float(self.tBeadWXY.GetValue())
 
-        mask = numpy.abs(wxy - wxy_bead) < (.25*wxy_bead)
+        mask = np.abs(wxy - wxy_bead) < (.25*wxy_bead)
+
+        pts_master = np.vstack([x0[mask], y0[mask]]).T
 
         nBeads = mask.sum()
         
@@ -318,7 +282,7 @@ class BlobFinder(Plugin):
         
         self.shiftfields ={}
 
-        plt.figure() 
+        #plt.figure() 
         
         nchans = self.image.data.shape[3]
         ch_i = 1
@@ -332,12 +296,25 @@ class BlobFinder(Plugin):
                 x = res['fitResults']['x0']
                 y = res['fitResults']['y0']
                 z = res['fitResults']['z0']
-                err_x = numpy.sqrt(res['fitError']['x0']**2 + err_x0**2)
-                err_y = numpy.sqrt(res['fitError']['y0']**2 + err_y0**2)
+                err_x = res['fitError']['x0'] #**2 + err_x0[mask]**2)
+                err_y = res['fitError']['y0'] # **2 + err_y0[mask]**2)
+
+                pts = np.vstack([x, y]).T
+
+                i, score = fiducial_matching.match_points(pts_master, pts, 1000.0)
+
+                #TODO - filter on score??
+
+                print('i:', i, score)
+
+                xi, yi, zi, err_xi, err_yi = x[i], y[i], z[i], err_x[i], err_y[i]
+
+                err_x = np.sqrt(err_xi**2 + err_x0[mask]**2)
+                err_y = np.sqrt(err_yi**2 + err_y0[mask]**2)
                 
-                dx = x - x0
-                dy = y - y0
-                dz = z - z0
+                dx = xi - x0[mask]
+                dy = yi - y0[mask]
+                dz = zi - z0[mask]
 
                 # plt.figure()
                 # plt.plot(x0, y0, 'x')
@@ -354,30 +331,31 @@ class BlobFinder(Plugin):
                         raise ValueError('Not enough beads for linear model (3 d.f), only using %d beads - try adjustin filter wxy' % nBeads)
                     
                     #print(dx[mask]/1e3, dy[mask]/1e3)
-                    spx, spy = twoColour.genShiftVectorFieldLinear(x[mask], y[mask], dx[mask], dy[mask], err_x[mask], err_y[mask])
+                    spx, spy = twoColour.genShiftVectorFieldLinear(xi, yi, dx, dy, err_x, err_y)
                 elif model_type == 1:
                     if nBeads < 9:
                         raise ValueError('Not enough beads for quad model (9 d.f.), only using %d beads - try adjustin filter wxy' % nBeads)
-                    spx, spy = twoColour.genShiftVectorFieldQuad(x[mask], y[mask], dx[mask], dy[mask], err_x[mask], err_y[mask])
+                    spx, spy = twoColour.genShiftVectorFieldQuad(xi, yi, dx, dy, err_x, err_y)
                 elif model_type == 2:
                     if nBeads < 3:
                         raise ValueError('Not enough beads for spline model, only using %d beads - try adjustin filter wxy' % nBeads)
-                    _, _, spx, spy, _ = twoColour.genShiftVectorFieldSpline(x[mask], y[mask], dx[mask], dy[mask], err_x[mask], err_y[mask])
+                    _, _, spx, spy, _ = twoColour.genShiftVectorFieldSpline(xi, yi, dx, dy, err_x, err_y)
                 else:
                     raise ValueError('Unknown model type')
 
                 # plt.figure()
-                # plt.plot(x0, y0, 'x')
+                # plt.plot(x0[mask], y0[mask], 'x')
                 # plt.plot(x, y, 'o')
-                # plt.quiver(x0, y0, dx, dy, color=['r', 'g', 'b'][ch], angles='xy', scale_units='xy', scale=1)
-                
-                self.shiftfields[ch] = (spx, spy, numpy.median(dz[mask]))
+                # plt.quiver(x0[mask], y0[mask], dx, dy, np.log10(score), angles='xy', scale_units='xy', scale=1, width=0.01)
+                # plt.colorbar()
+
+                self.shiftfields[ch] = (spx, spy, numpy.median(dz))
                 #twoColourPlot.PlotShiftField2(spx, spy, self.image.data.shape[:2])
                 
-                #plt.figure()
+                plt.figure()
                 plt.subplot(1,nchans -1, ch_i)
                 ch_i += 1
-                twoColourPlot.PlotShiftResidualsS(x[mask], y[mask], dx[mask], dy[mask], spx, spy)
+                twoColourPlot.PlotShiftResidualsS(xi, yi, dx, dy, spx, spy)
                 
         plt.figure()
         X, Y = numpy.meshgrid(numpy.linspace(0., self.image.voxelsize_nm.x*self.image.data.shape[0], 20), numpy.linspace(0., self.image.voxelsize_nm.y*self.image.data.shape[1], 20))

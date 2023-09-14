@@ -206,6 +206,8 @@ class Pipelineify(ModuleBase):
 
     pixelSizeNM = Float(1, label='nanometer units',
                         desc="scaling factor to get 'x' and 'y' into units of nanometers. Useful if handling external data input in pixel units")
+    
+    foreshortening = Float(1.0, desc='scaling factor to correct for foreshortening in z')
 
     outputLocalizations = Output('Localizations')
     
@@ -286,7 +288,8 @@ class Pipelineify(ModuleBase):
 
         ev_maps, ev_charts = pipeline._processEvents(mapped_ds, events, mdh)
         pipeline._add_missing_ds_keys(mapped_ds, ev_maps)
-
+        mapped_ds.set_variables(foreShort=self.foreshortening)
+        
         #Fit module specific filter settings
         if 'Analysis.FitModule' in mdh.getEntryNames():
             fitModule = mdh['Analysis.FitModule']
@@ -895,40 +898,40 @@ class MeasureClusters3D(ModuleBase):
     -----
 
     Measures calculated (to be expanded)
-    --------------------------------------
-        count : int
-            Number of localizations (points) in the cluster
-        x : float
-            x center of mass
-        y : float
-            y center of mass
-        z : float
-            z center of mass
-        gyrationRadius : float
-            root mean square displacement to center of cluster, a measure of compaction or spatial extent see also
-            supplemental text of DOI: 10.1038/nature16496
-        axis0 : ndarray, shape (3,)
-            principle axis which accounts for the largest variance of the cluster, i.e. corresponds to the largest
-            eigenvalue
-        axis1 : ndarray, shape (3,)
-            next principle axis
-        axis2 : ndarray, shape (3,)
-            principle axis corresponding to the smallest eigenvalue
-        sigma0 : float
-            standard deviation along axis0
-        sigma1 : float
-            standard deviation along axis1
-        sigma2 : float
-            standard deviation along axis2
-        anisotropy : float
-            metric of anisotropy based on the spread along principle axes. Standard deviations of alpha * [1, 0, 0],
-            where alpha is a scalar, will result in an 'anisotropy' value of 1, i.e. maximally anisotropic. Completely
-            isotropic clusters will have equal standard deviations, i.e. alpha * [1, 1, 1], which corresponds to an
-            'anisotropy' value of 0. Intermediate cases result in values between 0 and 1.
-        theta : float
-            Azimuthal angle, in radians, along which the principle axis (axis0) points
-        phi : float
-            Zenith angle, in radians, along which the principle axis (axis0) points
+
+    :count: int
+        Number of localizations (points) in the cluster
+    :x: float
+        x center of mass
+    :y: float
+        y center of mass
+    :z: float
+        z center of mass
+    :gyrationRadius : float
+        root mean square displacement to center of cluster, a measure of compaction or spatial extent see also
+        supplemental text of DOI: 10.1038/nature16496
+    :axis0 : ndarray, shape (3,)
+        principle axis which accounts for the largest variance of the cluster, i.e. corresponds to the largest
+        eigenvalue
+    :axis1 : ndarray, shape (3,)
+        next principle axis
+    :axis2 : ndarray, shape (3,)
+        principle axis corresponding to the smallest eigenvalue
+    :sigma0 : float
+        standard deviation along axis0
+    :sigma1 : float
+        standard deviation along axis1
+    :sigma2 : float
+        standard deviation along axis2
+    :anisotropy : float
+        metric of anisotropy based on the spread along principle axes. Standard deviations of alpha * [1, 0, 0],
+        where alpha is a scalar, will result in an 'anisotropy' value of 1, i.e. maximally anisotropic. Completely
+        isotropic clusters will have equal standard deviations, i.e. alpha * [1, 1, 1], which corresponds to an
+        'anisotropy' value of 0. Intermediate cases result in values between 0 and 1.
+    :theta : float
+        Azimuthal angle, in radians, along which the principle axis (axis0) points
+    :phi : float
+        Zenith angle, in radians, along which the principle axis (axis0) points
 
     """
     inputName = Input('input')
@@ -1027,8 +1030,74 @@ class MeasureClusters3D(ModuleBase):
             cmorph.measure_3d(x, y, z, output=measurements[cluster_index])
 
             indi = indf
+        
+        # propagate the labelKey used to generate these measurements
+        output = tabular.MappingFilter(tabular.RecArraySource(measurements))
+        output.addColumn(self.labelKey, np.arange(maxLabel))
+        return output
 
-        return tabular.RecArraySource(measurements)
+
+@register_module('AddMeasurementsByLabel')
+class AddMeasurementsByLabel(ModuleBase):
+    input_points = Input('input')
+    input_measurements = Input('clusterMeasures')
+    label_key = CStr('label')
+    output_points = Output('annotated_points')
+
+    def run(self, input_points, input_measurements):
+        """
+        Propagate measurements from e.g. MeasureClusters3D back to points they were calcualted from.
+        This is particularly useful for visualizing e.g. the gyration radius of a cluster in PYMEVis
+        while looking at the original localization data.
+
+        Parameters
+        ----------
+        input_points : PYME.IO.tabular.TabularBase
+            points used to generate the measurements
+        input_measurements : PYME.IO.tabular.TabularBase
+            measurements to propagate back to the points
+
+        Returns
+        -------
+        PYME.IO.tabular.TabularBase
+            point data with new columns added, one for each scalar measurement in input_measurements, which
+            can be accessed by '<label_key>_<measurement_key>', e.g. 'clumpIndex_gyrationRadius'.
+        
+        """
+        from PYME.IO.tabular import MappingFilter
+        
+        # only propagate 1D measurements
+        annotations = dict()
+        for k in input_measurements.keys():
+            if input_measurements[k].ndim == 1: #TODO - also check for object dtype?
+                annotations[k] = np.zeros(len(input_points), dtype=input_measurements[k].dtype)
+        
+        try:
+            labels = np.unique(input_measurements[self.label_key])
+        except KeyError:
+            logger.exception('Label key %s not found in input_measurements, RISKY: continuing with assumption measurements are sorted by label and all present' % self.label_key)
+            labels = np.arange(1, len(input_measurements) + 1)  # MeasureClusters3D ignores the unclustered points 'label 0' so index 0 corresponds to 'label 1'
+        
+        for label in labels:
+            points_mask = label == input_points[self.label_key]
+            try:
+                measurement_mask = label == input_measurements[self.label_key]
+            except KeyError:
+                measurement_mask = label - 1  # MeasureClusters3D ignores the unclustered points 'label 0' so index 0 corresponds to 'label 1'
+            
+            for k in annotations.keys():
+                annotations[k][points_mask] = input_measurements[k][measurement_mask]
+
+        output_points = MappingFilter(input_points)
+        try:
+            output_points.mdh = input_points.mdh
+        except AttributeError:
+            pass
+        
+        for k in annotations.keys():
+            output_points.addColumn(self.label_key + '_' + k, annotations[k])
+        
+        return output_points
 
 
 @register_module('FiducialCorrection')

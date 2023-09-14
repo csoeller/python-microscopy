@@ -39,6 +39,7 @@ from PYME.localization import MetaDataEdit as mde
 from PYME.localization import remFitBuf
 from PYME.ui.mytimer import mytimer
 import sys
+import importlib
 
 import logging
 logger = logging.getLogger(__name__)
@@ -165,9 +166,10 @@ class AnalysisSettingsView(object):
             vsizer.Add(pg, 0,wx.BOTTOM|wx.EXPAND, 5)    
         
     def _populateCustomAnalysisPanel(self, pan, vsizer):
+        from PYME.localization.FitFactories import import_fit_factory
         try:
             fitMod = self.fitFactories[self.cFitType.GetSelection()]
-            fm = __import__('PYME.localization.FitFactories.' + fitMod, fromlist=['PYME', 'localization', 'FitFactories'])
+            fm = import_fit_factory(fitMod)
             
             #vsizer = wx.BoxSizer(wx.VERTICAL)
             for param in fm.PARAMETERS:
@@ -593,7 +595,7 @@ class LMAnalyser2(Plugin):
 
         mdh = self.analysisController.analysisMDH
 
-        if not hasattr(self, '_ovl'):
+        if not hasattr(self, '_ovl') or not hasattr(self._ovl, 'filter'):
             from PYME.DSView import overlays
             from PYME.IO import tabular
             filt = tabular.FitResultsSource(self.fitResults)
@@ -986,8 +988,10 @@ class LMAnalyser2(Plugin):
                 #figure()
                 #imshow()
             except AttributeError:
+                from numbers import Number
                 #d = self.image.data[:,:,zp].squeeze().T
-                if isinstance(ft.bg, np.ndarray):
+                if isinstance(ft.bg, np.ndarray) or isinstance(ft.bg, Number):
+                    # TODO - revisit special cases - should we check for the GPU stuff first and then just duck-type everything else?
                     # We expect our background estimate to take the form of a numpy array, correct our data by subtracting the background
                     d = (ft.data - ft.bg).squeeze().T
                 elif hasattr(ft.bg, 'get_background'):
