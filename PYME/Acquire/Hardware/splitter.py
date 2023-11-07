@@ -34,7 +34,7 @@ from PYME.Analysis import splitting
 
 class Splitter:
     def __init__(self, parent, scope, cam, dir='up_down', flipChan=1, dichroic = 'Unspecified', transLocOnCamera = 'Top',
-                 constrain=True, flip = True, cam_name='', rois=None):
+                 constrain=True, flip = True, cam_name='', rois=None, border=0):
         self.dir = dir
         self.scope = scope
         self.cam = cam
@@ -43,6 +43,7 @@ class Splitter:
         self.unmixer = splitting.Unmixer(flip=flip, axis = dir)
         self.flip = flip
         self._rois=rois
+        self.splitterBorder = border
 
         #which dichroic mirror is installed
         self.dichroic = dichroic
@@ -54,6 +55,7 @@ class Splitter:
 
         cam.splitting='none'
         cam.splitterFlip = flip
+        cam.splitterBorder = self.splitterBorder
 
         self.offset = 0
         self.mixMatrix = numpy.array([[1.,0.],[0.,1.]])
