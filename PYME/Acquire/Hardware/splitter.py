@@ -43,7 +43,7 @@ class Splitter:
         self.unmixer = splitting.Unmixer(flip=flip, axis = dir)
         self.flip = flip
         self._rois=rois
-        self.splitterBorder = border
+        self.splitterBorder = int(border) # ensure this is an int type
 
         #which dichroic mirror is installed
         self.dichroic = dichroic
@@ -72,7 +72,8 @@ class Splitter:
         self.miConstrROI = parent.AddMenuItem('Splitter', 'Constrain ROI%s' % suff, self.OnConstrainROI, itemType = 'check')
         parent.AddMenuItem('Splitter', 'Flip view%s' % suff, self.OnFlipView)
         parent.AddMenuItem('Splitter', 'Unmix%s\tF7' % suff, self.OnUnmix)
-        parent.AddMenuItem('Splitter', 'SetShiftField%s' % suff, self.OnSetShiftField)
+        parent.AddMenuItem('Splitter', 'Set ShiftField%s' % suff, self.OnSetShiftField)
+        parent.AddMenuItem('Splitter', 'Remove ShiftField settings%s' % suff, self.OnUnsetShiftField)
 
 #        idConstROI = wx.NewIdRef()
 #        idFlipView = wx.NewIdRef()
@@ -185,6 +186,14 @@ class Splitter:
         self.shiftField = np_load_legacy(sfname)
         self.shiftFieldName = sfname
         self.unmixer.SetShiftField(self.shiftField, self.scope)
+
+    def OnUnsetShiftField(self,event):
+        if hasattr(self,'shiftField'): # otherwise provideMetaData plays up
+            delattr(self,'shiftField')
+        if hasattr(self,'shiftFieldName'):
+            delattr(self,'shiftFieldName')
+             
+        self.unmixer.UnsetShiftField()
 
 
     def Unmix(self):

@@ -60,6 +60,14 @@ class Unmixer(object):
         self.X2 = np.round(X - shiftField[0](X*70., Y*70.)/70.).astype('i')
         self.Y2 = np.round(Y - shiftField[1](X*70., Y*70.)/70.).astype('i')
 
+    def UnsetShiftField(self):
+        # X2 and Y2 attributes signal that a shiftfield is set
+        if 'X2' in dir(self):
+            delattr(self,'X2')
+        if 'Y2' in dir(self):
+            delattr(self,'Y2')
+        
+
     def _deshift(self, red_chan, ROI=[0,0,512, 512]):
         if 'X2' in dir(self):
             x1, y1, x2, y2 = ROI
