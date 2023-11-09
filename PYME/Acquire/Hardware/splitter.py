@@ -201,9 +201,9 @@ class Splitter:
 
         roi = self.scope.cam.GetROI()
         
-        return self.unmixer.Unmix(dsa, self.mixMatrix, self.offset, ROI=[roi[0]+1,
+        return self.unmixer.Unmix(dsa, self.mixMatrix, self.offset, ROI=[roi[0],
                                                                          roi[1],
-                                                                         roi[2]+1,
+                                                                         roi[2],
                                                                          roi[3]])
 
 
