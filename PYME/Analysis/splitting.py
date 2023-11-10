@@ -51,8 +51,9 @@ class Unmixer(object):
         self.debug = True
         self.firstPass = True
 
-    def debugfirstPass(self):
-        return self.debug and self.firstPass
+    def debugfirstPass(self,*args):
+        if self.debug and self.firstPass:
+            print(*args)
     
     def SetShiftField(self, shiftField, scope):
         #self.shiftField = shiftField
@@ -78,31 +79,24 @@ class Unmixer(object):
         if 'X2' in dir(self):
             x1, y1, x2, y2 = ROI
 
-            if self.debugfirstPass():
-                print("ROI is ",ROI)
-                print("X2 shape", self.X2.shape)
-                print("red channel shape", red_chan.shape)
+            self.debugfirstPass("ROI is ",ROI)
+            self.debugfirstPass("X2 shape", self.X2.shape)
+            self.debugfirstPass("red channel shape", red_chan.shape)
 
             if self.axis == 'up_down':
-                if self.debugfirstPass():
-                    print("axis is up_down")
+                self.debugfirstPass("axis is up_down")
                 Xn = self.X2[x1:x2, y1:(y1 + red_chan.shape[1])] - x1
                 Yn = self.Y2[x1:x2, y1:(y1 + red_chan.shape[1])] - y1
             else:
-                if self.debugfirstPass():
-                    print("axis is left_right")
+                self.debugfirstPass("axis is left_right")
                 Xn = self.X2[x1:(x1 + red_chan.shape[0]), y1:y2] - x1
                 Yn = self.Y2[x1:(x1 + red_chan.shape[0]), y1:y2] - y1
 
-            if self.debugfirstPass():
-                print(Xn.shape)
+            self.debugfirstPass("Xn shape",Xn.shape)
 
             Xn = np.maximum(np.minimum(Xn, red_chan.shape[0]-1), 0)
             Yn = np.maximum(np.minimum(Yn, red_chan.shape[1]-1), 0)
-            if self.debugfirstPass():
-                print(Xn.shape)
 
-            self.firstPass = False
             return red_chan[Xn, Yn]
 
         else:
@@ -165,14 +159,14 @@ class Unmixer(object):
         else:
             g_ = dsa[:int(dsa.shape[0]/2), :]
             r_ = dsa[int(dsa.shape[0]/2):, :]
-            if self.debugfirstPass():
-                print('red channel shape: %s' % repr(r_.shape))
+            self.debugfirstPass('red channel shape: %s' % repr(r_.shape))
             if self.flip:
                 r_ = np.flipud(r_)
             r_ = self._deshift(r_, ROI)
-            if self.debugfirstPass():
-                print('red channel shape after deshift: %s' % repr(r_.shape))
-            
+            self.debugfirstPass('red channel shape after deshift: %s' % repr(r_.shape))
+
+        self.firstPass = False
+
         #print g_.shape, r_.shape
 
         g = umm[0,0]*g_ + umm[0,1]*r_
