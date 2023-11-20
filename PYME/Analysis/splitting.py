@@ -48,8 +48,21 @@ class Unmixer(object):
         if shiftfield:
             self.SetShiftField(shiftfield)
 
+        self.mdh = None
+
         self.debug = True
         self.firstPass = True
+
+    def update_mdh(self):
+        #  we populate the mdh here
+        from PYME.IO import MetaDataHandler
+        mdh = MetaDataHandler.NestedClassMDHandler()
+
+        #loop over all providers of metadata
+        for mdgen in MetaDataHandler.provideStartMetadata:
+            mdgen(mdh)
+
+        self.mdh = mdh
 
     def debugfirstPass(self,*args):
         if self.debug and self.firstPass:
@@ -184,3 +197,28 @@ class Unmixer(object):
 
         #View3D([r.reshape(r.shape + (1,)),g.reshape(r.shape + (1,))])
         return [r.reshape(r.shape + (1,)),g.reshape(r.shape + (1,))]
+
+    def Unmix_roi(self, data, mixMatrix, offset):
+        from PYME.localisation.splitting import split_image
+        import scipy.linalg
+        
+        #from pylab import *
+        #from PYME.DSView.dsviewer_npy import View3D
+
+        umm = scipy.linalg.inv(mixMatrix)
+
+        dsa = data.squeeze() - offset
+        
+        split_im = split_image(self.mdh, dsa)
+
+        self.debugfirstPass('split image shape: %s' % repr(split_im.shape))
+
+        g_ = split_im[:,:,0].squeeze()
+        r_ = split_im[:,:,1].squeeze()
+        g = umm[0,0]*g_ + umm[0,1]*r_
+        r = umm[1,0]*g_ + umm[1,1]*r_
+
+        self.firstPass = False
+
+        return [r.reshape(r.shape + (1,)),g.reshape(r.shape + (1,))] # reshaping should not be necessary??
+        
