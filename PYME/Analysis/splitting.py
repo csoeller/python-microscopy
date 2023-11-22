@@ -118,7 +118,7 @@ class Unmixer(object):
 
     def Unmix_(self, data, mixMatrix, offset, ROI=[0,0,512, 512]):
         import scipy.linalg
-        from PYME.localisation import splitting
+        from PYME.localization import splitting
         #from pylab import *
         #from PYME.DSView.dsviewer_npy import View3D
 
@@ -199,7 +199,7 @@ class Unmixer(object):
         return [r.reshape(r.shape + (1,)),g.reshape(r.shape + (1,))]
 
     def Unmix_roi(self, data, mixMatrix, offset):
-        from PYME.localisation.splitting import split_image
+        from PYME.localization.splitting import split_image
         import scipy.linalg
         
         #from pylab import *
