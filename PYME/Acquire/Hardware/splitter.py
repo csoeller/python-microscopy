@@ -150,6 +150,7 @@ class Splitter:
 
     def OnUnmix(self,event):
         #self.Unmix()
+        self.unmixer.update_mdh() # make sure we have the latest metadata available
         if (not 'f' in dir(self)) or (self.f is None):
             self.f = UnMixPanel(self.parent, splitter = self, size=(500, 275))
             #self.o = OptionsPanel(self.parent, self.f.vp.do, horizOrientation=True)
@@ -199,12 +200,9 @@ class Splitter:
     def Unmix(self):
         dsa = self.scope.frameWrangler.currentFrame.squeeze()
 
-        roi = self.scope.cam.GetROI()
+        # roi = self.scope.cam.GetROI() # not needed for 
         
-        return self.unmixer.Unmix(dsa, self.mixMatrix, self.offset, ROI=[roi[0],
-                                                                         roi[1],
-                                                                         roi[2],
-                                                                         roi[3]])
+        return self.unmixer.Unmix_roi(dsa, self.mixMatrix, self.offset)
 
 
 class UnMixSettingsPanel(wx.Panel):
