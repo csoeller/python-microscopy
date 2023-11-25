@@ -53,14 +53,11 @@ class Splitter:
         #register as a producer of metadata
         MetaDataHandler.provideStartMetadata.append(self.ProvideMetadata)
 
-        cam.splitting='none'
-        cam.splitterFlip = flip
-        cam.splitterBorder = self.splitterBorder
-
         self.offset = 0
         self.mixMatrix = numpy.array([[1.,0.],[0.,1.]])
 
         self.constrainROI = False
+        cam.splitterConstrain = self.GetConstrainedROI
         self.flipView = False
         self.f = None
 
@@ -136,10 +133,6 @@ class Splitter:
 
     def OnConstrainROI(self,event=None):
         self.constrainROI = not self.constrainROI
-        if self.constrainROI:
-            self.cam.splitting = self.dir
-        else:
-            self.cam.splitting = 'none'
 
     def OnFlipView(self,event):
         self.flipView = not self.flipView
@@ -195,17 +188,35 @@ class Splitter:
              
         self.unmixer.UnsetShiftField()
 
-
     def Unmix(self):
         dsa = self.scope.frameWrangler.currentFrame.squeeze()
 
-        roi = self.scope.cam.GetROI()
-        
-        return self.unmixer.Unmix(dsa, self.mixMatrix, self.offset, ROI=[roi[0],
-                                                                         roi[1],
-                                                                         roi[2],
-                                                                         roi[3]])
+        return self.unmixer.Unmix(dsa, self.mixMatrix, self.offset, ROI=self.scope.cam.GetROI())
 
+    # method that returns a (possibly) constrained ROI from a given input ROI
+    # to implement other ROI constraining strategies override this method
+    def GetConstrainedROI(self,x1,y1,x2,y2):
+        if not self.constrainROI: # if constrainROI flag is False we just return the unmodified ROI
+            return (x1,y1,x2,y2)
+        
+        #if we're splitting colours/focal planes across the ccd, then only allow symetric ROIs
+        if self.dir.lower() == 'left_right':
+            x1 = min(x1, self.cam.GetCCDWidth() - x2)
+            x2 = max(x2, self.cam.GetCCDWidth() - x1)
+
+            if not self.flip:
+                x1 = self.splitterBorder
+                x2 = self.cam.GetCCDWidth() - self.splitterBorder
+
+        if self.dir.lower() == 'up_down':
+            y1 = min(y1, self.cam.GetCCDHeight() - y2)
+            y2 = max(y2, self.cam.GetCCDHeight() - y1)
+    
+            if not self.flip:
+                y1 = self.splitterBorder
+                y2 = self.cam.GetCCDHeight() - self.splitterBorder
+
+        return (x1,y1,x2,y2)
 
 class UnMixSettingsPanel(wx.Panel):
     def __init__(self, parent, splitter = None, size=(-1, -1)):
