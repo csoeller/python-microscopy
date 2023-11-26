@@ -31,6 +31,8 @@ import wx.lib.agw.aui as aui
 from PYME.IO import MetaDataHandler
 from PYME.IO.FileUtils import nameUtils
 from PYME.Analysis import splitting
+import logging
+logger = logging.getLogger(__name__)
 
 class Splitter:
     def __init__(self, parent, scope, cam, dir='up_down', flipChan=1, dichroic = 'Unspecified', transLocOnCamera = 'Top',
@@ -43,7 +45,20 @@ class Splitter:
         self.unmixer = splitting.Unmixer(flip=flip, axis = dir)
         self.flip = flip
         self._rois=rois
-        self.constrainedBorderSize = int(constrainedBorderSize) # ensure this is an int type
+
+        # check asensible limits for constrainedBorderSize
+        roi_limit = 20 # minimum size in pixels of remaining area
+        if constrainedBorderSize < 0:
+            constrainedBorderSize = 0
+            logger.warn("constrainedBorderSize option value < 0; clipping to 0")
+        if self.dir.lower() == "up_down":
+            limit_size = int(cam.GetCCDHeight()/2 - roi_limit)
+        else:
+            limit_size = int(cam.GetCCDWidth()/2 - roi_limit)
+        if constrainedBorderSize > limit_size:
+            constrainedBorderSize = limit_size
+            logger.warn("constrainedBorderSize too large; reduced to %d" % (limit_size))        
+        self.constrainedBorderSize = int(constrainedBorderSize) # ensure this is an int type       
 
         #which dichroic mirror is installed
         self.dichroic = dichroic
@@ -201,6 +216,8 @@ class Splitter:
     def GetConstrainedROI(self,x1,y1,x2,y2):
         if not self.constrainROI: # if constrainROI flag is False we just return the unmodified ROI
             return (x1,y1,x2,y2)
+
+        ROIori = (x1,y1,x2,y2)
         
         #if we're splitting colours/focal planes across the ccd, then only allow symetric ROIs
         if self.dir.lower() == 'left_right':
@@ -218,6 +235,8 @@ class Splitter:
             if not self.flip:
                 y1 = self.constrainedBorderSize
                 y2 = self.cam.GetCCDHeight() - self.constrainedBorderSize
+
+        logger.debug("altering ROI (x1,y1,x2,y2) from %s to %s" % (repr(ROIori),repr((x1,y1,x2,y2))))  
 
         return (x1,y1,x2,y2)
 
