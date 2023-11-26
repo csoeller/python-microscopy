@@ -562,7 +562,7 @@ class PYMEMainFrame(AUIFrame):
             else:
                 x1, y1, x2, y2 = self.vp.do.GetSliceSelection()
 
-                # if a splitter is registered with the current cam we let the splitter process the ROI
+                # if a splitter constraining method is registered with the current cam we let it process the ROI
                 if  'splitterConstrain' in dir(self.scope.cam):
                     x1, y1, x2, y2 = self.scope.cam.splitterConstrain(x1, y1, x2, y2)
                     

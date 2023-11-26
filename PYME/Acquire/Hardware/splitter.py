@@ -34,7 +34,7 @@ from PYME.Analysis import splitting
 
 class Splitter:
     def __init__(self, parent, scope, cam, dir='up_down', flipChan=1, dichroic = 'Unspecified', transLocOnCamera = 'Top',
-                 constrain=True, flip = True, cam_name='', rois=None, border=0):
+                 constrain=True, flip = True, cam_name='', rois=None, constrainedBorderSize=0):
         self.dir = dir
         self.scope = scope
         self.cam = cam
@@ -43,7 +43,7 @@ class Splitter:
         self.unmixer = splitting.Unmixer(flip=flip, axis = dir)
         self.flip = flip
         self._rois=rois
-        self.splitterBorder = int(border) # ensure this is an int type
+        self.constrainedBorderSize = int(constrainedBorderSize) # ensure this is an int type
 
         #which dichroic mirror is installed
         self.dichroic = dichroic
@@ -57,7 +57,9 @@ class Splitter:
         self.mixMatrix = numpy.array([[1.,0.],[0.,1.]])
 
         self.constrainROI = False
+        # register method that processes ROIs and if constrainROI is on this may alter the user choices
         cam.splitterConstrain = self.GetConstrainedROI
+        
         self.flipView = False
         self.f = None
 
@@ -132,7 +134,7 @@ class Splitter:
                 mdh.setEntry('chroma.dy', dy)
 
     def OnConstrainROI(self,event=None):
-        self.constrainROI = not self.constrainROI
+        self.constrainROI = not self.constrainROI # toggle flag
 
     def OnFlipView(self,event):
         self.flipView = not self.flipView
@@ -194,6 +196,7 @@ class Splitter:
         return self.unmixer.Unmix(dsa, self.mixMatrix, self.offset, ROI=self.scope.cam.GetROI())
 
     # method that returns a (possibly) constrained ROI from a given input ROI
+    # should return unaltered ROI if constrain option is off (self.constrainROI == False)
     # to implement other ROI constraining strategies override this method
     def GetConstrainedROI(self,x1,y1,x2,y2):
         if not self.constrainROI: # if constrainROI flag is False we just return the unmodified ROI
@@ -204,17 +207,17 @@ class Splitter:
             x1 = min(x1, self.cam.GetCCDWidth() - x2)
             x2 = max(x2, self.cam.GetCCDWidth() - x1)
 
-            if not self.flip:
-                x1 = self.splitterBorder
-                x2 = self.cam.GetCCDWidth() - self.splitterBorder
+            if not self.flip: # if not flipping support a border parameter that is given as splitter option
+                x1 = self.constrainedBorderSize
+                x2 = self.cam.GetCCDWidth() - self.constrainedBorderSize
 
         if self.dir.lower() == 'up_down':
             y1 = min(y1, self.cam.GetCCDHeight() - y2)
             y2 = max(y2, self.cam.GetCCDHeight() - y1)
     
             if not self.flip:
-                y1 = self.splitterBorder
-                y2 = self.cam.GetCCDHeight() - self.splitterBorder
+                y1 = self.constrainedBorderSize
+                y2 = self.cam.GetCCDHeight() - self.constrainedBorderSize
 
         return (x1,y1,x2,y2)
 
