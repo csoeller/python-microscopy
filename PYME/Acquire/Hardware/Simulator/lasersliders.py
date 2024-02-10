@@ -63,7 +63,7 @@ class LaserSliders(wx.Panel):
 
         #sizer_2.AddSpacer(5)
 
-        wx.EVT_SCROLL(self,self.onSlide)
+        self.Bind(wx.EVT_SCROLL,self.onSlide)
                 
        
         #self.SetAutoLayout(1)

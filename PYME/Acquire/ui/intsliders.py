@@ -81,7 +81,7 @@ class IntegrationSliders_(wx.Panel):
             sl_val.Bind(wx.EVT_TEXT_ENTER, self.onCombobox)
 
         sizer_2.AddSpacer(5)
-        wx.EVT_SCROLL_CHANGED(self,self.onSlide)
+        self.Bind(wx.EVT_SCROLL_CHANGED,self.onSlide)
                 
        
         #self.SetAutoLayout(1)

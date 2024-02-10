@@ -327,9 +327,9 @@ class UnMixPanel(wx.Panel):
 
         #self.Layout()
         #self.update()
-        wx.EVT_CLOSE(self, self.OnCloseWindow)
-        wx.EVT_SIZE(self, self.OnSize)
-        wx.EVT_SHOW(self, self.OnShow)
+        self.Bind(wx.EVT_CLOSE, self.OnCloseWindow)
+        self.Bind(wx.EVT_SIZE, self.OnSize)
+        self.Bind(wx.EVT_SHOW, self.OnShow)
 
         #self.bGrabOffset.Bind(wx.EVT_BUTTON, self.OnGrabOffsetFromCamera)
 
