@@ -54,8 +54,8 @@ class FastGraphPanel(wx.Panel):
         self.SetData(xvals, data)
 
 
-        wx.EVT_PAINT(self, self.OnPaint)
-        wx.EVT_SIZE(self, self.OnSize)
+        self.Bind(wx.EVT_PAINT, self.OnPaint)
+        self.Bind(wx.EVT_SIZE, self.OnSize)
         #wx.EVT_LEFT_DOWN(self, self.OnLeftDown)
         #wx.EVT_LEFT_UP(self, self.OnLeftUp)
         #wx.EVT_MOTION(self, self.OnMouseMove)

@@ -107,7 +107,7 @@ class PipelinePanel(wx.Panel):
         #self.SetSizerAndFit(sizer)
         #self.SetAutoLayout(True)
 
-        wx.EVT_SIZE(self, self.OnSize)
+        self.Bind(wx.EVT_SIZE, self.OnSize)
 
     def OnSize(self, event):
         self.grid.SetSize(self.GetClientSize())

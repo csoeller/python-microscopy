@@ -58,14 +58,14 @@ class LMGLCanvas(GLCanvas):
         attriblist = [wx.glcanvas.WX_GL_RGBA,wx.glcanvas.WX_GL_STENCIL_SIZE,8, wx.glcanvas.WX_GL_DOUBLEBUFFER, 16]
         GLCanvas.__init__(self, parent,-1, attribList = attriblist)
         #GLCanvas.__init__(self, parent,-1)
-        wx.EVT_PAINT(self, self.OnPaint)
-        wx.EVT_SIZE(self, self.OnSize)
-        wx.EVT_MOUSEWHEEL(self, self.OnWheel)
-        wx.EVT_LEFT_DOWN(self, self.OnLeftDown)
-        wx.EVT_LEFT_UP(self, self.OnLeftUp)
-        wx.EVT_LEFT_DCLICK(self, self.OnLeftDClick)
+        self.Bind(wx.EVT_PAINT, self.OnPaint)
+        self.Bind(wx.EVT_SIZE, self.OnSize)
+        self.Bind(wx.EVT_MOUSEWHEEL, self.OnWheel)
+        self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
+        self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp)
+        self.Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDClick)
         if trackSelection:
-            wx.EVT_MOTION(self, self.OnMouseMove)
+            self.Bind(wx.EVT_MOTION, self.OnMouseMove)
         #wx.EVT_ERASE_BACKGROUND(self, self.OnEraseBackground)
         #wx.EVT_IDLE(self, self.OnIdle)
         
