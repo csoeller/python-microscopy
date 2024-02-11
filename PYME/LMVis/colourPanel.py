@@ -423,15 +423,15 @@ class colourPanel(wx.Panel):
         self.lFluorSpecies.DeleteAllItems()
 
         for key in self.pipeline.colour_mapper.species_ratios.keys():
-            ind = self.lFluorSpecies.InsertStringItem(UI_MAXSIZE, key)
+            ind = self.lFluorSpecies.InsertItem(UI_MAXSIZE, key)
 
             ratio = self.pipeline.colour_mapper.species_ratios[key]
-            self.lFluorSpecies.SetStringItem(ind, 1, '%3.3f' % ratio)
+            self.lFluorSpecies.SetItem(ind, 1, '%3.3f' % ratio)
             self.lFluorSpecies.SetItemTextColour(ind, wx.Colour(*((128 * numpy.array(cm.jet_r(ratio)))[:3])))
             
             num_dyes = sum(self.pipeline.colourFilter._index(key))
 
-            self.lFluorSpecies.SetStringItem(ind,2, '%d' % num_dyes)
+            self.lFluorSpecies.SetItem(ind,2, '%d' % num_dyes)
 
 
         #self.colPlotPan._SetSize()
