@@ -1001,7 +1001,7 @@ class LMAnalyser2(Plugin):
 
                 try:
                     plt.plot(res.driftResults['fitResults']['x0']/vx, res.driftResults['fitResults']['y0']/vy, '*y', mew=2)
-                except AttributeError:
+                except (AttributeError, TypeError):
                     pass
                     
                 #figure()
