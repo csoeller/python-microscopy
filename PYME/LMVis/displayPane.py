@@ -53,6 +53,8 @@ class DisplayPane(afp.foldingPane):
         self.visFr = visFr
 
         self.scaleBarLengths = OrderedDict([('<None>', None),
+                                            ('10nm', 10),
+                                            ('20nm', 20),
                                             ('50nm', 50),
                                             ('200nm', 200),
                                             ('500nm', 500),
@@ -287,6 +289,8 @@ class DisplayPaneLight(afp.foldingPane):
         self.visFr = visFr
         
         self.scaleBarLengths = OrderedDict([('<None>', None),
+                                            ('10nm', 10),
+                                            ('20nm', 20),
                                             ('50nm', 50),
                                             ('200nm', 200),
                                             ('500nm', 500),
@@ -365,6 +369,8 @@ class DisplayPaneHorizontal(wx.Panel):
         self.visFr = visFr
         
         self.scaleBarLengths = OrderedDict([('<None>', None),
+                                            ('10nm', 10),
+                                            ('20nm', 20),
                                             ('50nm', 50),
                                             ('200nm', 200),
                                             ('500nm', 500),

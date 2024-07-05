@@ -33,6 +33,7 @@ def load_pmvs(filename,translate_paths=True):
     for entry in ['localizations', 'recipe']:
         if entry in pmvs_args:
             pmvs_args[entry] = chkpath_relative(filename,pmvs_args[entry])
-    for key in pmvs_args['imageds']:
-        pmvs_args['imageds'][key] = chkpath_relative(filename,pmvs_args['imageds'][key])
+    if 'imageds' in pmvs_args:
+        for key in pmvs_args['imageds']:
+            pmvs_args['imageds'][key] = chkpath_relative(filename,pmvs_args['imageds'][key])
     return pmvs_args
