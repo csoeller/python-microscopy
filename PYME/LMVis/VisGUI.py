@@ -446,6 +446,20 @@ def main_(filename=None, use_shaders=False, args=None):
     check_for_updates.gui_prompt_once()
     application.MainLoop()
 
+def load_and_parse_pmvs(args):
+    from PYME.IO.pmvs import load_pmvs
+    pmvs_args = load_pmvs(args.file)
+    if len(args.load) > 0: # check if this restriction is really needed
+        raise RuntimeError("loading additional files from the command line not allowed when using pmvs file")
+    if pmvs_args.get('recipe',None) is not None:
+        if args.recipe is not None: # check if restriction sensible
+            raise RuntimeError("recipe in pmvs file but recipe also supplied on command line - conflict")
+        args.recipe = pmvs_args['recipe']
+    for name in pmvs_args.get('imageds',{}):
+        args.load.append((name,pmvs_args['imageds'][name]))
+    args.file = pmvs_args['localizations']
+    return args
+    
 def parse():
     parser = argparse.ArgumentParser()
     parser.add_argument('file', help="file that should be used", default=None, nargs='?')
@@ -458,8 +472,10 @@ def parse():
     parser.add_argument('--no-layers', dest='new_layers', action='store_false', default=True)
     parser.add_argument('-l', '--load', nargs=2, action='append', default=[], dest='load', metavar=('KEY', 'FILENAME'), help='Load one (or more) additional files into the recipe namespace.')
     args = parser.parse_args()
+    if args.file.endswith('.pmvs'):
+        load_and_parse_pmvs(args)
     return args
-    
+
 def main():
     from multiprocessing import freeze_support
     import PYME.config
