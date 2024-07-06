@@ -455,8 +455,8 @@ def load_and_parse_pmvs(args):
         if args.recipe is not None: # check if restriction sensible
             raise RuntimeError("recipe in pmvs file but recipe also supplied on command line - conflict")
         args.recipe = pmvs_args['recipe']
-    for name in pmvs_args.get('imageds',{}):
-        args.load.append((name,pmvs_args['imageds'][name]))
+    for name in pmvs_args.get('load',{}):
+        args.load.append((name,pmvs_args['load'][name]))
     args.file = pmvs_args['localizations']
     return args
     
