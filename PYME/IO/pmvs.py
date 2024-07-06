@@ -39,6 +39,6 @@ def load_pmvs(filename,translate_paths=True):
         if entry in pmvs_args:
             pmvs_args[entry] = chkpath_relative(filename,pmvs_args[entry])
     if 'imageds' in pmvs_args:
-        for key in pmvs_args['imageds']:
-            pmvs_args['imageds'][key] = chkpath_relative(filename,pmvs_args['imageds'][key])
+        for key in pmvs_args['load']:
+            pmvs_args['load'][key] = chkpath_relative(filename,pmvs_args['load'][key])
     return pmvs_args
