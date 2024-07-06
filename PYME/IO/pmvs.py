@@ -24,8 +24,13 @@ def load_pmvs(filename,translate_paths=True):
         raise RuntimeError("file %s is not a PMVS version 1.0 file" % filename)
     check_entries(pmvs_args,
                   required=['localizations','pmvs_version'],
-                  optional=['imageds','recipe','comment'])
-    
+                  optional=['load','imageds','recipe','comment'])
+    if 'imageds' in pmvs_args:
+        # use imageds only for backwards compatibility
+        if 'load' not in pmvs_args:
+            pmvs_args['load'] = {}
+        for key in pmvs_args['imageds']:
+            pmvs_args['load'][key] = pmvs_args['imageds'][key]
     if not translate_paths:
         return pmvs_args
     
