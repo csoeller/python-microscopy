@@ -1,3 +1,5 @@
+from PYME.warnings import warn
+
 def chkpath_relative(pmvsname,filename):
     from pathlib import Path
     pf = Path(filename)
@@ -8,13 +10,27 @@ def chkpath_relative(pmvsname,filename):
         return filename
     return str(parentdir / filename)
 
-def check_entries(pmvs,required=[],optional=[]):
+def check_entries(pmvs,required=[],optional=[],deprecated={}):
+    required_flat = []
     for entry in required:
-        if entry not in pmvs:
-            raise RuntimeError("fatal: no required '%s' entry in PMVS file" % entry)
-    for entry in pmvs.keys():
-        if entry not in required + optional:
+        if isinstance(entry,(list,tuple)):
+            missing = True
+            for subentry in entry:
+                if subentry in pmvs:
+                    missing = False
+                required_flat.append(subentry)
+            if missing:
+                raise RuntimeError("fatal: none of required '%s' entry alternatives in PMVS file" % entry)
+        else:
+            if entry not in pmvs:
+                raise RuntimeError("fatal: no required '%s' entry in PMVS file" % entry)
+            required_flat.append(entry)
+    for entry in pmvs:
+        if entry not in required_flat + optional:
             raise RuntimeError("fatal: unknown '%s' entry in PMVS file" % entry)
+    for entry in deprecated.keys():
+        if entry in pmvs:
+            warn("deprecated key '%s' in pmvs file, replace with current version '%s'" % (entry,deprecated[entry]))
 
 def load_pmvs(filename,translate_paths=True):
     import yaml
@@ -23,8 +39,9 @@ def load_pmvs(filename,translate_paths=True):
     if pmvs_args.get('pmvs_version') != 'v1.0':
         raise RuntimeError("file %s is not a PMVS version 1.0 file" % filename)
     check_entries(pmvs_args,
-                  required=['localizations','pmvs_version'],
-                  optional=['load','imageds','recipe','comment'])
+                  required=[['localizations','mainfile'],'pmvs_version'],
+                  optional=['load','imageds','recipe','comment'],
+                  deprecated=dict(localizations='mainfile',imageds='load'))
     if 'imageds' in pmvs_args:
         # use imageds only for backwards compatibility
         if 'load' not in pmvs_args:
