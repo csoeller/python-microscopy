@@ -48,14 +48,29 @@ def load_pmvs(filename,translate_paths=True):
             pmvs_args['load'] = {}
         for key in pmvs_args['imageds']:
             pmvs_args['load'][key] = pmvs_args['imageds'][key]
+    if 'localizations' in pmvs_args:
+        pmvs_args['mainfile'] = pmvs_args['localizations']
     if not translate_paths:
         return pmvs_args
     
     # otherwise make sure relative paths are suitably translated
-    for entry in ['localizations', 'recipe']:
+    for entry in ['recipe', 'mainfile']:
         if entry in pmvs_args:
             pmvs_args[entry] = chkpath_relative(filename,pmvs_args[entry])
-    if 'imageds' in pmvs_args:
+    if 'load' in pmvs_args:
         for key in pmvs_args['load']:
             pmvs_args['load'][key] = chkpath_relative(filename,pmvs_args['load'][key])
     return pmvs_args
+
+def load_and_parse_pmvs(args):
+    pmvs_args = load_pmvs(args.file)
+    if len(args.load) > 0: # check if this restriction is really needed
+        raise RuntimeError("loading additional files from the command line not allowed when using pmvs file")
+    if pmvs_args.get('recipe',None) is not None:
+        if args.recipe is not None: # check if restriction sensible
+            raise RuntimeError("recipe in pmvs file but recipe also supplied on command line - conflict")
+        args.recipe = pmvs_args['recipe']
+    for name in pmvs_args.get('load',{}):
+        args.load.append((name,pmvs_args['load'][name]))
+    args.file = pmvs_args['mainfile']
+    return args

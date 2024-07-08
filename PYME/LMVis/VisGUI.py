@@ -445,20 +445,6 @@ def main_(filename=None, use_shaders=False, args=None):
     application = VisGuiApp(filename, use_shaders, args, 0)
     check_for_updates.gui_prompt_once()
     application.MainLoop()
-
-def load_and_parse_pmvs(args):
-    from PYME.IO.pmvs import load_pmvs
-    pmvs_args = load_pmvs(args.file)
-    if len(args.load) > 0: # check if this restriction is really needed
-        raise RuntimeError("loading additional files from the command line not allowed when using pmvs file")
-    if pmvs_args.get('recipe',None) is not None:
-        if args.recipe is not None: # check if restriction sensible
-            raise RuntimeError("recipe in pmvs file but recipe also supplied on command line - conflict")
-        args.recipe = pmvs_args['recipe']
-    for name in pmvs_args.get('load',{}):
-        args.load.append((name,pmvs_args['load'][name]))
-    args.file = pmvs_args['localizations']
-    return args
     
 def parse():
     parser = argparse.ArgumentParser()
@@ -472,8 +458,7 @@ def parse():
     parser.add_argument('--no-layers', dest='new_layers', action='store_false', default=True)
     parser.add_argument('-l', '--load', nargs=2, action='append', default=[], dest='load', metavar=('KEY', 'FILENAME'), help='Load one (or more) additional files into the recipe namespace.')
     args = parser.parse_args()
-    if args.file.endswith('.pmvs'):
-        load_and_parse_pmvs(args)
+    
     return args
 
 def main():
@@ -483,6 +468,11 @@ def main():
     
     filename = None
     args = parse()
+
+    # implement the "pymevis argument from file parsing" to effectively create a simple bundle file type
+    from PYME.IO.pmvs import load_and_parse_pmvs
+    if args.file is not None and args.file.endswith('.pmvs'):
+        load_and_parse_pmvs(args)
     
     PYME.config.config['VisGUI-new_layers'] = args.new_layers
     
