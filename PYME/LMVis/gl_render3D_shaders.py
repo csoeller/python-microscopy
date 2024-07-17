@@ -300,10 +300,7 @@ class LMGLShaderCanvas(GLCanvas):
         # TODO - do we need to do anything differnt on win?
         vmajor,vminor = wx.VERSION[:2]
 
-        if (vmajor >= 4) and (vminor >=1): # 4.1 or later 
-            sc = self.GetContentScaleFactor()
-        else:
-            sc = 1
+        sc = self.content_scale_factor
 
         #print('scale factor:', sc)
 
@@ -388,6 +385,8 @@ class LMGLShaderCanvas(GLCanvas):
                 GL.glOrtho(-1, 1, ys, -ys, -1000, 1000)
 
             GL.glMatrixMode(GL.GL_MODELVIEW)
+
+            #stereo offset
             GL.glTranslatef(eye, 0.0, 0.0)
 
             # move our object to be centred at -10
@@ -412,7 +411,7 @@ class LMGLShaderCanvas(GLCanvas):
                 
                 oit_layers = [] #layers which support order independent transparency - render these all together
                 for l in self.layers:
-                    if getattr(l.engine, 'use_oit', lambda l: False)(l) or getattr(l.engine, 'oit', False):
+                    if hasattr(l, 'engine') and (getattr(l.engine, 'use_oit', lambda l: False)(l) or getattr(l.engine, 'oit', False)):
                         #defer rendering
                         oit_layers.append(l)
                     else:
@@ -474,11 +473,7 @@ class LMGLShaderCanvas(GLCanvas):
         # fix scaling error
         # TODO - should this check be on wx, or OpenGL (or potentially python)
         # TODO - do we need to do anything differnt on win?
-        vmajor,vminor = wx.VERSION[:2]
-        if vmajor >= 4 and vminor >=1: # 4.1 or later 
-            sc = self.GetContentScaleFactor()
-        else:
-            sc = 1
+        sc = self.content_scale_factor
 
         #sc = 1
 
@@ -696,6 +691,16 @@ class LMGLShaderCanvas(GLCanvas):
     def pixelsize(self):
         return 2. / (self.view.scale * self.view_port_size[0])
     
+    @property
+    def content_scale_factor(self):
+        # version-safe way to get the content scale factor for high DPI screens
+        vmajor,vminor = wx.VERSION[:2]
+        if vmajor >= 4 and vminor >=1: # 4.1 or later 
+            sc = self.GetContentScaleFactor()
+        else:
+            sc = 1
+        return sc
+    
     def _view_changed(self):
         """Notify anyone who is synced to our view"""
         for callback in self.wantViewChangeNotification:
@@ -826,7 +831,7 @@ class LMGLShaderCanvas(GLCanvas):
 
     def _ScreenCoordinatesToNm(self, x, y):
         # FIXME!!!
-        sc = self.GetContentScaleFactor()
+        sc = self.content_scale_factor
         x_ = self.pixelsize * (x - 0.5 * float(self.view_port_size[0])) + self.view.translation[0]
         y_ = self.pixelsize * (y - 0.5 * float(self.view_port_size[1])) + self.view.translation[1]
         # print x_, y_
@@ -944,11 +949,7 @@ class LMGLShaderCanvas(GLCanvas):
         #     raise RuntimeError('{} is not a supported format.'.format(mode))
         # img.show()
         self.on_screen = False
-        vmajor, vminor = wx.VERSION[:2]
-        if (vmajor >= 4) and (vminor >= 1):
-            sc = self.GetContentScaleFactor()
-        else:
-            sc = 1
+        sc = self.content_scale_factor
         view_port_size = (int(self.view_port_size[0]*sc), int(self.view_port_size[1]*sc))
         off_screen_handler = OffScreenHandler(view_port_size, mode, self._num_antialias_samples)
         with off_screen_handler:
