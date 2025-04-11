@@ -345,7 +345,7 @@ class Pipeline(object):
     
     @property
     def imageBounds(self):
-        x0, y0, x1, y1, z0, z1 = 0, 0, 0, 0, 0, 0
+        x0, y0, x1, y1, z0, z1 = 1e9, 1e9, -1e9, -1e9, 1e9, -1e9
         for ds in self.dataSources.values():
             try:
                 ib = ds.image_bounds
@@ -525,7 +525,7 @@ class Pipeline(object):
         Return a dictionary of datasources which are suitable for listing in a session file
         
         """
-        from PYME import warnings
+        from PYME import pyme_warnings as warnings
         out = {}
         for k in self.recipe.inferred_data:
             ds = self.dataSources[k]
