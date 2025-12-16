@@ -448,7 +448,7 @@ class Microscope(object):
 
     def _OpenSettingsDB(self):
         with self.settingsDB as conn:
-            tableNames = [a[0] for a in conn.execute('SELECT name FROM sqlite_master WHERE type="table"').fetchall()]
+            tableNames = [a[0] for a in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
     
             if not 'CCDCalibration2' in tableNames:
                 conn.execute("CREATE TABLE CCDCalibration2 (time timestamp, temperature integer, serial integer, nominalGains ndarray, trueGains ndarray)")

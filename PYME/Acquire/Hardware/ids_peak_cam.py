@@ -131,6 +131,8 @@ class IDS_Camera(Camera):
         # throw an error unless we're matched.
         assert sys.byteorder == 'little'
 
+        self._node_map.FindNode("GainSelector").SetCurrentEntry("AnalogAll") # we set to analog gain
+
         self.Init()
         self.initialized = True
         
@@ -523,6 +525,13 @@ class IDS_Camera(Camera):
             Frame rate (fps)
         """
         return self._node_map.FindNode("AcquisitionFrameRate").Value()
+
+    def SetGain(self, gain=100):
+        self._node_map.FindNode("Gain").SetValue(gain)
+        
+    def GetGain(self):
+        ret = self._node_map.FindNode("Gain").Value()
+        return ret
 
     def GetSerialNumber(self):
         return self.serial_number
