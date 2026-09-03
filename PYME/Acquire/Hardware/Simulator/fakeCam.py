@@ -21,7 +21,8 @@
 #
 ##################
 
-from . import rend_im
+from PYME.simulation import image_gen
+from PYME.simulation.cameranoise import generate_camera_maps, NoiseMaker
 import scipy
 
 from PYME.IO import MetaDataHandler
@@ -43,124 +44,10 @@ elif sys.platform == 'darwin':
 else: #linux
     memcpy = ctypes.CDLL('libc.so.6').memcpy
 
-from PYME.Acquire.Hardware import EMCCDTheory
 from PYME.Acquire.Hardware import ccdCalibrator
 
 import logging
 logger = logging.getLogger(__name__)
-
-def generate_camera_maps(size_x = 1024, size_y = 1024, seed=100, read_median=1.38, offset=100):
-    """
-    Generate camera maps for sCMOS simulation, using a constant random seed so that the maps are reproducible
-    
-    The use (and parameterization) of pareto distributions is designed to match the distribution of values observed in
-    actual camera maps. Note that the pareto gives a somewhat better match than lognormal.
-    
-    Parameters
-    ----------
-    size_x
-    size_y
-    seed
-    read_median
-    offset
-
-    Returns
-    -------
-
-    """
-    
-    np.random.seed(seed)
-    
-    #Variance
-    s = 2.0
-    #var = (np.random.lognormal(np.log(read_median), s, [size_x, size_y]))**2
-    var = (read_median/(2**(1./s)) * (1 + np.random.pareto(s, [size_x, size_y]))) ** 2
-    
-    #the dark map has 3 components - a pareto distributed base distribution, a small ammount of Gaussian spread, and Gaussian distributed fixed pattern
-    # line noise
-    dark = offset + np.random.pareto(2.7, [size_x, size_y]) + np.random.normal(0, 1.8, [size_x, size_y]) + np.random.normal(0, 0.35, [size_x,])[:,None]
-    
-    flatfield = np.ones_like(dark)
-    
-    np.random.seed()
-    return {'variance': var, 'dark':dark, 'flat' : flatfield}
-
-class NoiseMaker:
-    def __init__(self, QE=.8, electronsPerCount=27.32, readoutNoise=109.8, EMGain=0, background=0., floor=967, shutterOpen = True,
-                 numGainElements=536, vbreakdown=6.6, temperature = -70., fast_read_approx=True):
-        self.QE = QE
-        self.ElectronsPerCount = electronsPerCount
-        self.ReadoutNoise=readoutNoise
-        self.EMGain=EMGain
-        self.background = background
-        self.ADOffset = floor
-        self.NGainElements = numGainElements
-        self.vbreakdown = vbreakdown
-        self.temperature = temperature
-        self.shutterOpen = shutterOpen
-        
-        self.approximate_read_noise = fast_read_approx #approximate readout noise
-        
-        self._ar_key = None
-        self._ar_cache = None
-        
-    def _read_approx(self, im_shape):
-        """
-        Really dirty fast approximation to readout noise by indexing into a random location within a pre-calculated noise
-        matrix. Note that this may result in undesired correlations in the read noise.
-        
-        Parameters
-        ----------
-        im_shape
-
-        Returns
-        -------
-
-        """
-        nEntries = int(np.prod(im_shape))
-        ar_key = (nEntries, self.ADOffset, self.ReadoutNoise, self.ElectronsPerCount)
-        
-        if not self._ar_key == ar_key or self._ar_cache is None:
-            self._ar_cache = self.ADOffset + (self.ReadoutNoise / self.ElectronsPerCount)*np.random.normal(size=2*nEntries)
-            self._ar_key = ar_key
-            
-        offset = np.random.randint(0, nEntries)
-        return self._ar_cache[offset:(offset+nEntries)].reshape(im_shape)
-
-    def noisify(self, im):
-        """Add noise to image using an EMCCD noise model
-        
-        Inputs
-        ------
-        
-        im : NxM array of intensities (in photons)
-        
-        Outputs
-        -------
-        
-        out: NxM array of simulated camera pixel intensities (in ADUs)
-        
-        """
-
-        M = EMCCDTheory.M((80. + self.EMGain)/(255 + 80.), self.vbreakdown, self.temperature, self.NGainElements, 2.2)
-        F2 = 1.0/EMCCDTheory.FSquared(M, self.NGainElements)
-
-        if self.approximate_read_noise:
-            o = self._read_approx(im.shape)
-        else:
-            o = self.ADOffset + (self.ReadoutNoise / self.ElectronsPerCount) * np.random.standard_normal(im.shape)
-        
-        if self.shutterOpen:
-            o = o +  (M/(self.ElectronsPerCount*F2))*np.random.poisson((self.QE*F2)*(im + self.background))
-
-        return o
-        
-    def getbg(self):
-        M = EMCCDTheory.M((80. + self.EMGain)/(255 + 80.), self.vbreakdown, self.temperature, self.NGainElements, 2.2)
-        F2 = 1.0/EMCCDTheory.FSquared(M, self.NGainElements)
-
-        return self.ADOffset + M*(int(self.shutterOpen)*(0 + self.background)*self.QE*F2)/(self.ElectronsPerCount*F2) 
-
 
 WELL_DEPTH= (2 << 15) -1
 
@@ -168,13 +55,13 @@ WELL_DEPTH= (2 << 15) -1
 #calculate image in a separate thread to maintain GUI reponsiveness
 class compThread(threading.Thread):
     def __init__(self,XVals, YVals,zPiezo, zOffset, fluors, noisemaker, laserPowers, intTime, contMode = True,
-                 bufferlength=500, biplane = False, biplane_z = 500, xpiezo=None, ypiezo=None, illumFcn = 'ConstIllum', objects=None):
+                 bufferlength=500, biplane = False, biplane_z = 500, xpiezo=None, ypiezo=None, illumFcn = 'ConstIllum', objects=None, image_generator=None):
         #TODO - Do we need to change the default buffer length. This shouldn't really be an issue as we pause the simulation the buffer starts to fill up.
         
         threading.Thread.__init__(self)
         self.XVals = XVals
         self.YVals = YVals
-        self.fluors = fluors # type: PYME.Acquire.Hardware.Simulator.fluor.Fluorophores
+        self.fluors = fluors # type: PYME.simulation.fluorophores.Fluorophores
         self.objects = objects #list of Fluorophores instances
         #self.zPos = zPos
         self.laserPowers = laserPowers
@@ -186,6 +73,9 @@ class compThread(threading.Thread):
         self.bufferWritePos = 0
         self.bufferReadPos = 0
         self.numBufferedImages = 0
+
+        assert(image_generator is not None)
+        self.image_generator = image_generator
 
         self.biplane = biplane
         self.deltaZ = biplane_z
@@ -277,23 +167,18 @@ class compThread(threading.Thread):
                 r_i = np.zeros((len(self.XVals), len(self.YVals)), 'f')
                 for obj in self.objects:
                     if obj.hit_test(roi_bbox):
-                        rend_im.simPalmImFI(self.XVals + xp, self.YVals + yp, zPos,obj,
+                        self.image_generator.simulate_image(self.XVals, self.YVals,obj,
                                                                   laserPowers=self.laserPowers, intTime=self.intTime,
                                                                   position=[xp,yp,zPos], illuminationFunction=self.illumFcn,
                                                                   ChanXOffsets=self.ChanXOffsets, ChanZOffsets=self.ChanZOffsets,
                                                                   ChanSpecs=self.ChanSpecs, im=r_i)
             else:
-                r_i = rend_im.simPalmImFI(self.XVals + xp, self.YVals + yp, zPos,self.fluors,
+                r_i = self.image_generator.simulate_image(self.XVals, self.YVals, self.fluors,
                                                                   laserPowers=self.laserPowers, intTime=self.intTime,
                                                                   position=[xp,yp,zPos], illuminationFunction=self.illumFcn,
                                                                   ChanXOffsets=self.ChanXOffsets, ChanZOffsets=self.ChanZOffsets,
                                                                   ChanSpecs=self.ChanSpecs)
-            
-            # Bennet's empirical code modified this to set numSubSteps to 1. This breaks normal simulation (the current default of 10 substeps
-            # is the bare minimum to get somewhat realistic behaviour, although there are still artifacts at numSubsteps=10).
-            # TODO - is a numSubSteps of 1 important for the empirical simulation? I would imagine that the emprical code
-            # should also use substepping (for much the same reason - to simulate sub frame on-times).
-            
+                        
             r_i = r_i[:,:]
             _im = self.noiseMaker.noisify(r_i)
             self.im = np.clip(_im, 0, WELL_DEPTH).astype('uint16')
@@ -374,7 +259,9 @@ class FakeCamera(Camera):
             
             self.pixel_size_nm = XVals[1] - XVals[0]
 
-        rend_im.set_pixelsize_nm(self.pixel_size_nm)
+
+        self.image_generator = image_gen.ImageGenerator()
+        self.image_generator.set_pixelsize_nm(self.pixel_size_nm)
 
         self.zPiezo=zPiezo
         self.xPiezo = xpiezo
@@ -485,11 +372,13 @@ class FakeCamera(Camera):
         if self._objects is not None:
             self.compT = compThread(self.XVals[self.ROIx[0]:self.ROIx[1]], self.YVals[self.ROIy[0]:self.ROIy[1]],
                                 self.zPiezo, self.zOffset, None, self.noiseMaker, laserPowers=self.laserPowers,
-                                intTime=self.intTime, xpiezo=self.xPiezo, ypiezo=self.yPiezo, illumFcn=self.illumFcn, objects=self._objects)
+                                intTime=self.intTime, xpiezo=self.xPiezo, ypiezo=self.yPiezo, illumFcn=self.illumFcn, 
+                                objects=self._objects, image_generator=self.image_generator)
         else:
             self.compT = compThread(self.XVals[self.ROIx[0]:self.ROIx[1]], self.YVals[self.ROIy[0]:self.ROIy[1]],
                                 self.zPiezo, self.zOffset, self.fluors, self.noiseMaker, laserPowers=self.laserPowers,
-                                intTime=self.intTime, xpiezo=self.xPiezo, ypiezo=self.yPiezo, illumFcn=self.illumFcn)
+                                intTime=self.intTime, xpiezo=self.xPiezo, ypiezo=self.yPiezo, illumFcn=self.illumFcn,
+                                image_generator=self.image_generator)
 
         try:
             #vx = self.XVals[1] - self.XVals[0]
